@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Indian Special Forces — Systems Case Study</title>
+<meta name="description" content="How the systems in Indian Special Forces were designed — problems, decisions, and trade-offs, not just a feature list.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c11;
+    --bg-alt: #10131b;
+    --card: #151924;
+    --border: #232838;
+    --text: #e7eaf2;
+    --text-dim: #8a91a6;
+    --accent: #5eead4;
+    --accent2: #a78bfa;
+    --radius: 14px;
+    --maxw: 860px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.65;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(94,234,212,0.07), transparent 40%),
+      radial-gradient(circle at 85% 10%, rgba(167,139,250,0.07), transparent 40%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, .logo { font-family: 'Space Grotesk', 'Segoe UI', sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 1.5rem; }
+
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10,12,17,0.85);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav.wrap { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; max-width: var(--maxw); }
+  .logo { font-weight: 700; font-size: 1.05rem; }
+  .logo span { color: var(--accent); }
+  .back-link {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    transition: color 0.15s;
+  }
+  .back-link:hover { color: var(--accent); }
+
+  .hero { padding: 4rem 0 2.5rem; }
+  .eyebrow {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent2);
+    background: rgba(167,139,250,0.08);
+    border: 1px solid rgba(167,139,250,0.25);
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    margin-bottom: 1.3rem;
+  }
+  .hero h1 {
+    font-size: clamp(1.9rem, 5vw, 2.8rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .hero .tagline { margin-top: 0.7rem; font-size: 1.05rem; color: var(--text-dim); }
+
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 0.6rem;
+    margin-top: 1.5rem;
+  }
+  .meta-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+  }
+
+  .intro {
+    margin-top: 2rem;
+    padding: 1.4rem 1.6rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-dim);
+    font-size: 0.96rem;
+  }
+  .intro strong { color: var(--text); font-weight: 600; }
+
+  /* ---------- Case study blocks ---------- */
+  .case { padding: 2.8rem 0; border-top: 1px solid var(--border); }
+  .case-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+  }
+  .case h2 { font-size: 1.5rem; margin-top: 0.4rem; }
+
+  .subhead {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin: 1.5rem 0 0.5rem;
+  }
+  .subhead.problem { color: #fb7185; }
+  .subhead.solution { color: var(--accent); }
+
+  .case p { font-size: 0.94rem; color: var(--text-dim); }
+  .case p strong { color: var(--text); font-weight: 600; }
+
+  code, .inline-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85em;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    padding: 0.05rem 0.4rem;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+
+  .tradeoff {
+    margin-top: 1.1rem;
+    padding: 0.9rem 1.1rem;
+    border-left: 2px solid var(--accent2);
+    background: rgba(167,139,250,0.05);
+    border-radius: 0 8px 8px 0;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+  }
+  .tradeoff strong { color: var(--accent2); }
+
+  footer {
+    text-align: center;
+    padding: 3rem 0 2.5rem;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+    border-top: 1px solid var(--border);
+    margin-top: 1rem;
+  }
+  footer a { color: var(--accent); }
+
+  @media (max-width: 640px) {
+    .hero { padding: 3rem 0 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <nav class="wrap">
+    <a href="index.html#top" class="logo">NKRVVI<span>.</span></a>
+    <a href="index.html#professional" class="back-link">← Back to portfolio</a>
+  </nav>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <span class="eyebrow">Case Study</span>
+    <h1>Indian Special Forces</h1>
+    <p class="tagline">Designing the systems behind a top-down tactical squad shooter — solo, end-to-end.</p>
+
+    <div class="meta-row">
+      <span class="meta-tag">Unreal Engine 5.5</span>
+      <span class="meta-tag">C++</span>
+      <span class="meta-tag">Solo Developer</span>
+      <span class="meta-tag">Neosphere Interactive</span>
+    </div>
+
+    <div class="intro">
+      This isn't a feature list. Every system below started as a design problem the
+      genre forces on you — imperfect information, squad-scale control, AI that has
+      to feel different per archetype without becoming five hand-written brains —
+      and the interesting part was <strong>the decision</strong>, not the typing.
+      Where there was a simpler or more obvious approach I didn't take, I've called
+      it out.
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <div class="case">
+    <span class="case-num">01 / Command &amp; Control</span>
+    <h2>One state machine, not five buttons doing five things</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      A squad-tactics game needs a lot of context-sensitive verbs — move, shoot,
+      melee, heal, repair, toss a grenade, mount a vehicle — issued at a cursor
+      position, on a selection that can range from one soldier to a full squad in
+      formation. Wiring each verb straight to an input event gets unmanageable fast:
+      the cursor icon, the UI highlight, and the actual order all have to agree on
+      "what mode am I in right now," and duplicating that logic per-action is where
+      bugs live.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      <code>AISF_CameraPlayerController</code> tracks a single
+      <code>EControllerState</code> enum as the source of truth for player intent
+      (Move / PrimaryFire / TossGrenade / Melee / Heal / Repair / EnterExit…).
+      Every action is a <code>SetStateToX()</code> / <code>ShowXOption()</code> pair —
+      entering a state drives cursor feedback and valid-target highlighting, and a
+      left-click just asks "what does the current state do with this click." Squad
+      movement layers formation math (column, wedge, line, staggered column) on top
+      of the same click point, and marquee/shift-select feed the same
+      <code>ChosenSoldiers</code> array every state reads from.
+    </p>
+
+    <div class="tradeoff">
+      <strong>Trade-off:</strong> a flat enum state machine is simpler to reason about
+      than a full HFSM but doesn't compose sub-states — I accepted that because the
+      action set is shallow (no state needs a state), and it kept the whole command
+      layer legible enough to extend solo without a framework.
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="case">
+    <span class="case-num">02 / Stealth &amp; Fog of War</span>
+    <h2>Imperfect information has to be readable, not just correct</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      The core loop is stealth: the player should only know what their soldiers can
+      see, and enemies should only react to what they actually perceive — not have
+      omniscient awareness of the player squad. Getting the simulation "correct"
+      (raycasts, senses) is the easy half. The hard half is making that invisible
+      information <em>legible</em> — a player who can't tell why an enemy noticed them
+      just feels cheated.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      Rather than write vision/detection from scratch, I built on top of proven
+      systems — the <code>FogOfWar</code> plugin for per-unit vision reveal, and
+      <code>UAIPerceptionComponent</code> (sight + hearing) for enemy awareness — and
+      spent my own engineering budget on the layer that was actually missing: making
+      it visible. <code>UISF_VisionConeIndicatorComponent</code> renders each enemy's
+      live sight cone to the player, and <code>ISF_WeaponRangeUIComponent</code> /
+      <code>ISF_WeaponRadiusIndicator</code> do the same for engagement ranges. A
+      depletable night-vision resource (timed, UI-tracked) turns "can I see" into a
+      tactical decision rather than a toggle.
+    </p>
+
+    <div class="tradeoff">
+      <strong>Trade-off:</strong> I deliberately didn't reinvent vision-cone math or a
+      custom perception stack — reusing battle-tested plugins for the simulation and
+      putting original work into player-facing legibility was the higher-leverage
+      choice for a solo dev on a fixed timeline.
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="case">
+    <span class="case-num">03 / Enemy AI</span>
+    <h2>Composable behavior instead of five hand-written brains</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      Three enemy archetypes (rifleman, machine gunner, sniper) each need distinct
+      combat and patrol behavior. The naive path — a Behavior Tree or C++ state
+      machine per archetype — means every shared behavior (find a target, reload
+      when empty, follow a patrol route) gets re-authored three times, and tuning one
+      enemy's timing risks silently drifting from the others.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      I built enemy brains on UE5's <strong>GameplayStateTree</strong> instead of
+      Behavior Trees, and split the logic into small, reusable building blocks:
+      Evaluators that answer yes/no questions (<code>STE_IsWeaponEmpty</code>,
+      <code>STE_IsCombatTargetDead</code>, <code>STE_GetCombatTarget</code>) and Tasks
+      that do one thing (<code>STT_ShootTarget</code>, <code>STT_Reload</code>). Each
+      archetype's tree is then <em>composed</em> from these shared pieces plus its own
+      patrol-route evaluator, rather than duplicating logic. Cover-seeking works the
+      same way at the query level: <code>UISF_CoverTraceEnvQueryTest</code> is a
+      custom EQS test that scores candidate points against a threat context, so cover
+      is discovered dynamically from level geometry instead of requiring hand-placed
+      cover markers on every map.
+    </p>
+
+    <div class="tradeoff">
+      <strong>Trade-off:</strong> StateTree's data-oriented composition costs more
+      upfront design than a quick Behavior Tree per enemy — I judged it worth it
+      because it meant new archetypes reuse existing tuned building blocks instead of
+      growing the bug surface linearly with enemy variety.
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="case">
+    <span class="case-num">04 / Combat &amp; Weapons</span>
+    <h2>One damage contract for soldiers, enemies, and trucks</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      Multiple weapon types (hitscan, projectile, grenades, rockets, melee) need to
+      be fired, reloaded, and switched by both player-controlled and AI-controlled
+      characters — and the things that can be hit range from a soldier, to an enemy,
+      to a vehicle that should be repairable instead of killable. Coupling "how combat
+      works" to a specific character class was going to force duplicate fire/reload
+      logic between player and AI, and duplicate damage logic between characters and
+      vehicles.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      Combat logic lives in <code>UISF_CombatComponent</code>, an
+      <code>ActorComponent</code> attached to <em>any</em> character — player soldier
+      or AI enemy — so firing, reloading, and weapon switching are written once and
+      driven by either a player click or an AI Task. Weapons share a common
+      <code>AISF_GunMaster</code> base with <code>ISF_HitscanGun</code> and
+      <code>ISF_ProjectileGun</code> subclasses. On the receiving end, damage/interaction
+      is expressed as interfaces — <code>ISF_InjurableInterface</code>,
+      <code>ISF_HealableInterface</code>, <code>ISF_ExplodableInterface</code>,
+      <code>ISF_RepairableInterface</code> — so a truck implements "repairable, not
+      injurable" and a soldier implements the opposite, without either one caring what
+      concrete class is on the other end of a hit.
+    </p>
+
+    <div class="tradeoff">
+      <strong>Trade-off:</strong> interfaces add a layer of indirection versus a single
+      shared "Damageable" base class — I chose interfaces specifically so a vehicle
+      could opt into repair semantics and opt out of injury semantics independently,
+      which a single inheritance line couldn't express cleanly.
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="case">
+    <span class="case-num">05 / Persistence &amp; Objectives</span>
+    <h2>Save data owned by the system that produces it</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      Mid-mission save/load in a systemic tactics game is a classic trap: soldier
+      health and ammo, vehicle position and patrol progress, camera state, night-vision
+      remaining, objective progress — if all of that gets funneled into one "level
+      save" blob assembled by a god object, every new system means editing that one
+      fragile aggregator, and save/load drift becomes a constant bug source.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      Each subsystem owns its own serialization contract: <code>SaveCombatData()</code>
+      /<code>LoadCombatData()</code> on the combat component,
+      <code>SaveControllerData()</code>/<code>LoadControllerData()</code> on the
+      player controller, and equivalents for soldiers, trucks, and the pilot — each
+      returning a small typed struct (<code>FCombatData</code>, <code>FTruckData</code>,
+      <code>FControllerData</code>…). <code>ISF_LevelSaveGame</code> just aggregates
+      structs it doesn't need to understand. Mission objectives follow the same
+      separation-of-concerns idea one level up: <code>UISF_ObjectivesSubsystem</code>
+      loads objective <em>definitions</em> from data tables (designer-editable, no
+      recompile) and keeps objective <em>progress</em> as separate runtime/save state.
+    </p>
+
+    <div class="tradeoff">
+      <strong>Trade-off:</strong> more structs and more save/load functions to maintain
+      than one big blob — but each one is small, owned, and testable in isolation, and
+      adding a new saveable system never means touching code outside that system.
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <a href="index.html#top">← Back to NKRVVI's portfolio</a>
+</footer>
+
+</body>
+</html>
