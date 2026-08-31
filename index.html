@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NKRVVI — Game Programming Portfolio</title>
+<meta name="description" content="Game programming portfolio of NKRVVI — professional and personal projects.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c11;
+    --bg-alt: #10131b;
+    --card: #151924;
+    --border: #232838;
+    --text: #e7eaf2;
+    --text-dim: #8a91a6;
+    --accent: #5eead4;
+    --accent2: #a78bfa;
+    --radius: 14px;
+    --maxw: 1080px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(94,234,212,0.07), transparent 40%),
+      radial-gradient(circle at 85% 10%, rgba(167,139,250,0.07), transparent 40%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, .logo { font-family: 'Space Grotesk', 'Segoe UI', sans-serif; }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 1.5rem; }
+
+  a { color: inherit; text-decoration: none; }
+
+  /* ---------- Nav ---------- */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(10,12,17,0.85);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  nav.wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .logo {
+    font-weight: 700;
+    font-size: 1.15rem;
+    letter-spacing: 0.02em;
+  }
+  .logo span { color: var(--accent); }
+
+  .nav-links { display: flex; gap: 1.75rem; }
+  .nav-links a {
+    color: var(--text-dim);
+    font-size: 0.92rem;
+    font-weight: 500;
+    transition: color 0.15s;
+  }
+  .nav-links a:hover { color: var(--text); }
+
+  .nav-cta {
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    color: var(--text) !important;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .nav-cta:hover { border-color: var(--accent); color: var(--accent) !important; }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    padding: 5.5rem 0 4rem;
+    text-align: center;
+  }
+  .eyebrow {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+    background: rgba(94,234,212,0.08);
+    border: 1px solid rgba(94,234,212,0.25);
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    margin-bottom: 1.5rem;
+  }
+  .hero h1 {
+    font-size: clamp(2.2rem, 6vw, 3.6rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    background: linear-gradient(135deg, var(--text) 40%, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero .tagline {
+    margin-top: 0.9rem;
+    font-size: 1.15rem;
+    color: var(--text-dim);
+  }
+  .hero .bio {
+    max-width: 620px;
+    margin: 1.2rem auto 0;
+    color: var(--text-dim);
+    font-size: 0.98rem;
+  }
+  .hero-links {
+    margin-top: 2rem;
+    display: flex;
+    gap: 1.3rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.88rem;
+  }
+  .hero-links a {
+    color: var(--text-dim);
+    border-bottom: 1px solid transparent;
+    padding-bottom: 2px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .hero-links a:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ---------- Section headings ---------- */
+  section { padding: 3.5rem 0; }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+  }
+  .section-head h2 {
+    font-size: 1.7rem;
+    font-weight: 700;
+  }
+  .section-head .count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+  .section-sub {
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    margin-top: -1.4rem;
+    margin-bottom: 2rem;
+  }
+
+  /* ---------- Filter bar ---------- */
+  .filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1.5rem 0 0.5rem;
+    border-top: 1px solid var(--border);
+    margin-top: 1rem;
+  }
+  .filter-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    align-self: center;
+    margin-right: 0.5rem;
+  }
+  .tag-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tag-btn:hover { border-color: var(--accent); color: var(--text); }
+  .tag-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0a0c11;
+    font-weight: 500;
+  }
+
+  /* ---------- Project grid ---------- */
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .project-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s, border-color 0.2s, opacity 0.2s;
+    opacity: 0;
+    transform: translateY(12px);
+    animation: reveal 0.5s ease forwards;
+  }
+  .project-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(94,234,212,0.35);
+  }
+  .project-card.hidden { display: none; }
+
+  @keyframes reveal { to { opacity: 1; transform: translateY(0); } }
+
+  .card-thumb {
+    height: 130px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 1.8rem;
+    color: rgba(10,12,17,0.55);
+    letter-spacing: 0.05em;
+  }
+
+  .card-body { padding: 1.25rem 1.4rem 1.5rem; display: flex; flex-direction: column; gap: 0.6rem; flex: 1; }
+
+  .card-header { display: flex; align-items: start; justify-content: space-between; gap: 0.5rem; }
+  .card-header h3 { font-size: 1.08rem; font-weight: 700; }
+  .card-period {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+    padding-top: 0.15rem;
+  }
+
+  .card-role {
+    font-size: 0.85rem;
+    color: var(--accent2);
+    font-weight: 500;
+  }
+
+  .card-desc { font-size: 0.88rem; color: var(--text-dim); flex: 1; }
+
+  .card-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.2rem; }
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+  }
+
+  .card-links { display: flex; gap: 1.1rem; margin-top: 0.4rem; }
+  .card-links a {
+    font-size: 0.82rem;
+    color: var(--accent);
+    border-bottom: 1px solid transparent;
+  }
+  .card-links a:hover { border-color: var(--accent); }
+
+  .badge-jam {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: #0a0c11;
+    background: var(--accent2);
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+  }
+
+  /* ---------- Contact ---------- */
+  .contact {
+    text-align: center;
+    padding: 4rem 0 3rem;
+    border-top: 1px solid var(--border);
+    margin-top: 2rem;
+  }
+  .contact h2 { font-size: 1.8rem; margin-bottom: 0.8rem; }
+  .contact p { color: var(--text-dim); max-width: 500px; margin: 0 auto 1.8rem; }
+  .contact-links {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95rem;
+  }
+  .contact-links a {
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 0.55rem 1.1rem;
+    border-radius: 999px;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .contact-links a:hover { border-color: var(--accent); color: var(--accent); }
+
+  footer {
+    text-align: center;
+    padding: 2rem 0 2.5rem;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  @media (max-width: 640px) {
+    .nav-links { display: none; }
+    .hero { padding: 3.5rem 0 2.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <nav class="wrap">
+    <a href="#top" class="logo">NKRVVI<span>.</span></a>
+    <div class="nav-links">
+      <a href="#professional">Professional</a>
+      <a href="#personal">Personal</a>
+      <a href="#contact">Contact</a>
+    </div>
+    <a class="nav-cta" href="https://github.com/NKRVVI" target="_blank" rel="noopener">GitHub ↗</a>
+  </nav>
+</header>
+
+<main id="top">
+
+  <!-- ============ HERO — edit this block with your own intro ============ -->
+  <section class="hero wrap">
+    <span class="eyebrow">Game Programmer</span>
+    <h1>NKRVVI</h1>
+    <p class="tagline">Gameplay Systems · Tools &amp; Engine Programming</p>
+    <p class="bio">
+      Short bio goes here — a couple of sentences about the kind of game programming
+      you do, the engines/languages you're strongest in, and what you're looking for
+      next. Keep it punchy; the projects below do the talking.
+    </p>
+    <div class="hero-links">
+      <a href="https://github.com/NKRVVI" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://YOURNAME.itch.io" target="_blank" rel="noopener">itch.io</a>
+      <a href="https://linkedin.com/in/YOURNAME" target="_blank" rel="noopener">LinkedIn</a>
+      <a href="mailto:you@example.com">Email</a>
+    </div>
+  </section>
+
+  <!-- ============ PROFESSIONAL PROJECTS ============ -->
+  <section id="professional" class="wrap">
+    <div class="section-head">
+      <h2>Professional Work</h2>
+      <span class="count">Studio &amp; contract projects</span>
+    </div>
+
+    <div class="project-grid" id="professional-grid">
+
+      <!-- PROJECT CARD — duplicate this <article> block for each professional project -->
+      <article class="project-card" data-tags="Unity,C#,Multiplayer,Gameplay">
+        <div class="card-thumb" style="background:linear-gradient(135deg,#5eead4,#3b82f6)">PT</div>
+        <div class="card-body">
+          <div class="card-header">
+            <h3>Project Title</h3>
+            <span class="card-period">2023–2024</span>
+          </div>
+          <p class="card-role">Studio Name · Gameplay Programmer</p>
+          <p class="card-desc">
+            One or two sentences on what the game/project was and what you specifically
+            built or owned — e.g. "Implemented the networked ability system and combat
+            state machine for a 4-player co-op shooter."
+          </p>
+          <div class="card-tags">
+            <span class="tag">Unity</span>
+            <span class="tag">C#</span>
+            <span class="tag">Multiplayer</span>
+            <span class="tag">Gameplay</span>
+          </div>
+          <div class="card-links">
+            <a href="#" target="_blank" rel="noopener">Store Page ↗</a>
+            <a href="#" target="_blank" rel="noopener">Trailer ↗</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="project-card" data-tags="Unreal,C++,Tools">
+        <div class="card-thumb" style="background:linear-gradient(135deg,#a78bfa,#5eead4)">PT</div>
+        <div class="card-body">
+          <div class="card-header">
+            <h3>Project Title</h3>
+            <span class="card-period">2022–2023</span>
+          </div>
+          <p class="card-role">Studio Name · Engine Programmer</p>
+          <p class="card-desc">
+            What the project shipped, team size/context, and your concrete contribution —
+            editor tooling, performance work, a specific system you owned.
+          </p>
+          <div class="card-tags">
+            <span class="tag">Unreal</span>
+            <span class="tag">C++</span>
+            <span class="tag">Tools</span>
+          </div>
+          <div class="card-links">
+            <a href="#" target="_blank" rel="noopener">Store Page ↗</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="project-card" data-tags="Unity,C#,AI">
+        <div class="card-thumb" style="background:linear-gradient(135deg,#f472b6,#a78bfa)">PT</div>
+        <div class="card-body">
+          <div class="card-header">
+            <h3>Project Title</h3>
+            <span class="card-period">2021–2022</span>
+          </div>
+          <p class="card-role">Studio Name · Systems Programmer</p>
+          <p class="card-desc">
+            Third example card — delete or duplicate as needed. Mention scale (team size,
+            platform, release status) so it reads like a real credit.
+          </p>
+          <div class="card-tags">
+            <span class="tag">Unity</span>
+            <span class="tag">C#</span>
+            <span class="tag">AI</span>
+          </div>
+          <div class="card-links">
+            <a href="#" target="_blank" rel="noopener">Store Page ↗</a>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ PERSONAL PROJECTS ============ -->
+  <section id="personal" class="wrap">
+    <div class="section-head">
+      <h2>Personal Projects</h2>
+      <span class="count">Solo work &amp; game jams</span>
+    </div>
+
+    <div class="project-grid" id="personal-grid">
+
+      <!-- PROJECT CARD — duplicate this <article> block for each personal project -->
+      <article class="project-card" data-tags="Godot,GDScript,Solo">
+        <div class="card-thumb" style="background:linear-gradient(135deg,#34d399,#5eead4)">PT</div>
+        <div class="card-body">
+          <div class="card-header">
+            <h3>Project Title <span class="badge-jam">Game Jam</span></h3>
+            <span class="card-period">2024</span>
+          </div>
+          <p class="card-role">Solo Project — 48hr Jam</p>
+          <p class="card-desc">
+            What you built, why, and anything notable about the constraint (jam theme,
+            timeframe, or a specific technique you experimented with).
+          </p>
+          <div class="card-tags">
+            <span class="tag">Godot</span>
+            <span class="tag">GDScript</span>
+            <span class="tag">Solo</span>
+          </div>
+          <div class="card-links">
+            <a href="#" target="_blank" rel="noopener">Play on itch.io ↗</a>
+            <a href="#" target="_blank" rel="noopener">Source ↗</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="project-card" data-tags="C++,SDL,Engine,Solo">
+        <div class="card-thumb" style="background:linear-gradient(135deg,#fbbf24,#f472b6)">PT</div>
+        <div class="card-body">
+          <div class="card-header">
+            <h3>Project Title</h3>
+            <span class="card-period">2023 – ongoing</span>
+          </div>
+          <p class="card-role">Solo Project</p>
+          <p class="card-desc">
+            E.g. a hobby engine or framework you're building from scratch — mention what
+            it's for and the most interesting technical problem you solved in it.
+          </p>
+          <div class="card-tags">
+            <span class="tag">C++</span>
+            <span class="tag">SDL</span>
+            <span class="tag">Engine</span>
+          </div>
+          <div class="card-links">
+            <a href="#" target="_blank" rel="noopener">Source ↗</a>
+            <a href="#" target="_blank" rel="noopener">Devlog ↗</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="project-card" data-tags="Unity,C#,Prototype,Solo">
+        <div class="card-thumb" style="background:linear-gradient(135deg,#60a5fa,#34d399)">PT</div>
+        <div class="card-body">
+          <div class="card-header">
+            <h3>Project Title</h3>
+            <span class="card-period">2023</span>
+          </div>
+          <p class="card-role">Solo Prototype</p>
+          <p class="card-desc">
+            Third example card — great spot for a mechanic-focused prototype or a tool you
+            built for your own workflow.
+          </p>
+          <div class="card-tags">
+            <span class="tag">Unity</span>
+            <span class="tag">C#</span>
+            <span class="tag">Prototype</span>
+          </div>
+          <div class="card-links">
+            <a href="#" target="_blank" rel="noopener">Play ↗</a>
+          </div>
+        </div>
+      </article>
+
+    </div>
+
+    <!-- Shared tag filter — auto-populated by JS from data-tags on all cards above -->
+    <div class="filter-bar" id="filter-bar">
+      <span class="filter-label">Filter:</span>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT ============ -->
+  <section id="contact" class="wrap contact">
+    <h2>Let's talk</h2>
+    <p>Open to opportunities and always happy to chat about gameplay systems, tools, or engine work.</p>
+    <div class="contact-links">
+      <a href="mailto:you@example.com">Email</a>
+      <a href="https://github.com/NKRVVI" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://YOURNAME.itch.io" target="_blank" rel="noopener">itch.io</a>
+      <a href="https://linkedin.com/in/YOURNAME" target="_blank" rel="noopener">LinkedIn</a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  © <span id="year"></span> NKRVVI — built with HTML/CSS/JS, hosted on GitHub Pages
+</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // Build the tag filter bar from every data-tags attribute in the document,
+  // then let clicking a tag hide non-matching cards in both sections.
+  (function () {
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.project-card'));
+    var tagSet = new Set();
+    cards.forEach(function (card) {
+      (card.dataset.tags || '').split(',').forEach(function (t) {
+        t = t.trim();
+        if (t) tagSet.add(t);
+      });
+    });
+
+    var bar = document.getElementById('filter-bar');
+
+    var allBtn = document.createElement('button');
+    allBtn.className = 'tag-btn active';
+    allBtn.textContent = 'All';
+    allBtn.dataset.tag = '__all__';
+    bar.appendChild(allBtn);
+
+    Array.from(tagSet).sort().forEach(function (tag) {
+      var btn = document.createElement('button');
+      btn.className = 'tag-btn';
+      btn.textContent = tag;
+      btn.dataset.tag = tag;
+      bar.appendChild(btn);
+    });
+
+    bar.addEventListener('click', function (e) {
+      var btn = e.target.closest('.tag-btn');
+      if (!btn) return;
+
+      bar.querySelectorAll('.tag-btn').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+
+      var tag = btn.dataset.tag;
+      cards.forEach(function (card) {
+        var tags = (card.dataset.tags || '').split(',').map(function (t) { return t.trim(); });
+        var match = tag === '__all__' || tags.indexOf(tag) !== -1;
+        card.classList.toggle('hidden', !match);
+      });
+    });
+  })();
+</script>
+
+</body>
+</html>
