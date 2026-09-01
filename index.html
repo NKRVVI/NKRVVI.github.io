@@ -339,7 +339,6 @@
     <a href="#top" class="logo">NKRVVI<span>.</span></a>
     <div class="nav-links">
       <a href="#professional">Professional</a>
-      <a href="#personal">Personal</a>
       <a href="#contact">Contact</a>
     </div>
     <a class="nav-cta" href="https://github.com/NKRVVI" target="_blank" rel="noopener">GitHub ↗</a>
@@ -432,95 +431,6 @@
     </div>
   </section>
 
-  <!-- ============ PERSONAL PROJECTS ============ -->
-  <section id="personal" class="wrap">
-    <div class="section-head">
-      <h2>Personal Projects</h2>
-      <span class="count">Solo work &amp; game jams</span>
-    </div>
-
-    <div class="project-grid" id="personal-grid">
-
-      <!-- PROJECT CARD — duplicate this <article> block for each personal project -->
-      <article class="project-card" data-tags="Godot,GDScript,Solo">
-        <div class="card-thumb" style="background:linear-gradient(135deg,#34d399,#5eead4)">PT</div>
-        <div class="card-body">
-          <div class="card-header">
-            <h3>Project Title <span class="badge-jam">Game Jam</span></h3>
-            <span class="card-period">2024</span>
-          </div>
-          <p class="card-role">Solo Project — 48hr Jam</p>
-          <p class="card-desc">
-            What you built, why, and anything notable about the constraint (jam theme,
-            timeframe, or a specific technique you experimented with).
-          </p>
-          <div class="card-tags">
-            <span class="tag">Godot</span>
-            <span class="tag">GDScript</span>
-            <span class="tag">Solo</span>
-          </div>
-          <div class="card-links">
-            <a href="#" target="_blank" rel="noopener">Play on itch.io ↗</a>
-            <a href="#" target="_blank" rel="noopener">Source ↗</a>
-          </div>
-        </div>
-      </article>
-
-      <article class="project-card" data-tags="C++,SDL,Engine,Solo">
-        <div class="card-thumb" style="background:linear-gradient(135deg,#fbbf24,#f472b6)">PT</div>
-        <div class="card-body">
-          <div class="card-header">
-            <h3>Project Title</h3>
-            <span class="card-period">2023 – ongoing</span>
-          </div>
-          <p class="card-role">Solo Project</p>
-          <p class="card-desc">
-            E.g. a hobby engine or framework you're building from scratch — mention what
-            it's for and the most interesting technical problem you solved in it.
-          </p>
-          <div class="card-tags">
-            <span class="tag">C++</span>
-            <span class="tag">SDL</span>
-            <span class="tag">Engine</span>
-          </div>
-          <div class="card-links">
-            <a href="#" target="_blank" rel="noopener">Source ↗</a>
-            <a href="#" target="_blank" rel="noopener">Devlog ↗</a>
-          </div>
-        </div>
-      </article>
-
-      <article class="project-card" data-tags="Unity,C#,Prototype,Solo">
-        <div class="card-thumb" style="background:linear-gradient(135deg,#60a5fa,#34d399)">PT</div>
-        <div class="card-body">
-          <div class="card-header">
-            <h3>Project Title</h3>
-            <span class="card-period">2023</span>
-          </div>
-          <p class="card-role">Solo Prototype</p>
-          <p class="card-desc">
-            Third example card — great spot for a mechanic-focused prototype or a tool you
-            built for your own workflow.
-          </p>
-          <div class="card-tags">
-            <span class="tag">Unity</span>
-            <span class="tag">C#</span>
-            <span class="tag">Prototype</span>
-          </div>
-          <div class="card-links">
-            <a href="#" target="_blank" rel="noopener">Play ↗</a>
-          </div>
-        </div>
-      </article>
-
-    </div>
-
-    <!-- Shared tag filter — auto-populated by JS from data-tags on all cards above -->
-    <div class="filter-bar" id="filter-bar">
-      <span class="filter-label">Filter:</span>
-    </div>
-  </section>
-
   <!-- ============ CONTACT ============ -->
   <section id="contact" class="wrap contact">
     <h2>Let's talk</h2>
@@ -541,50 +451,6 @@
 
 <script>
   document.getElementById('year').textContent = new Date().getFullYear();
-
-  // Build the tag filter bar from every data-tags attribute in the document,
-  // then let clicking a tag hide non-matching cards in both sections.
-  (function () {
-    var cards = Array.prototype.slice.call(document.querySelectorAll('.project-card'));
-    var tagSet = new Set();
-    cards.forEach(function (card) {
-      (card.dataset.tags || '').split(',').forEach(function (t) {
-        t = t.trim();
-        if (t) tagSet.add(t);
-      });
-    });
-
-    var bar = document.getElementById('filter-bar');
-
-    var allBtn = document.createElement('button');
-    allBtn.className = 'tag-btn active';
-    allBtn.textContent = 'All';
-    allBtn.dataset.tag = '__all__';
-    bar.appendChild(allBtn);
-
-    Array.from(tagSet).sort().forEach(function (tag) {
-      var btn = document.createElement('button');
-      btn.className = 'tag-btn';
-      btn.textContent = tag;
-      btn.dataset.tag = tag;
-      bar.appendChild(btn);
-    });
-
-    bar.addEventListener('click', function (e) {
-      var btn = e.target.closest('.tag-btn');
-      if (!btn) return;
-
-      bar.querySelectorAll('.tag-btn').forEach(function (b) { b.classList.remove('active'); });
-      btn.classList.add('active');
-
-      var tag = btn.dataset.tag;
-      cards.forEach(function (card) {
-        var tags = (card.dataset.tags || '').split(',').map(function (t) { return t.trim(); });
-        var match = tag === '__all__' || tags.indexOf(tag) !== -1;
-        card.classList.toggle('hidden', !match);
-      });
-    });
-  })();
 </script>
 
 </body>
