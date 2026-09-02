@@ -306,7 +306,87 @@
 
   <!-- 2 -->
   <div class="case">
-    <span class="case-num">02 / Battle Performance</span>
+    <span class="case-num">02 / Dynamic UI Plugin</span>
+    <h2>Data pushes to widgets, not widgets pulling from systems</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      Greenleaf's campaign UI is a living war-room dashboard: selecting an army must
+      immediately surface all options for that army; a resource gain must appear in the
+      top bar before the input call returns; switching from an owned province to an enemy
+      one must swap every panel to the right context in the same frame. Before a shared
+      solution existed, widgets were individually coupled to game systems. When a settlement's
+      resource balance changed, the handler had to manually locate and call an update method
+      on every widget that displayed that value. Widgets cached state locally, so stale data
+      bugs were constant. Adding a new display element meant threading update logic through
+      multiple code paths. There was no single source of truth — just a web of direct calls
+      growing wider every sprint.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      The plugin inverts the dependency. Game systems don't call into widgets — they call into
+      <strong>data models</strong>, which are observable typed stores. Widgets declare which
+      fields on which models they care about at construction time. When a handler writes a new
+      value to a field, every widget bound to that field updates synchronously in the same call
+      stack frame — before the handler returns, before the next line runs.
+    </p>
+
+    <p style="margin-top:0.75rem;"><strong style="color:var(--text)">Observable data model.</strong></p>
+    <p>
+      Each domain (army, province, diplomacy, top bar) has its own data store holding a map of
+      named fields to typed values. A field can carry an integer, float, string, texture,
+      colour, boolean, or 2D vector — the value object stores whichever type was last written.
+      Writing a field fires a multicast delegate immediately; there is no tick-based batching.
+      A reentrance guard silently drops any write that arrives from inside a delegate callback,
+      preventing circular update loops.
+    </p>
+
+    <p style="margin-top:0.75rem;"><strong style="color:var(--text)">Field name registry.</strong></p>
+    <p>
+      Field names are string constants held in a central data asset, not literal strings
+      scattered across the codebase. Both the handler setting a value and the widget binding
+      to it reference the same property on the same asset. Renaming a field is a single-point
+      change; a misspelled binding fails to connect at construction rather than silently
+      diverging at runtime. The asset is loaded once and cached statically so every widget
+      instance shares the same pointer.
+    </p>
+
+    <p style="margin-top:0.75rem;"><strong style="color:var(--text)">Type-safe update dispatch.</strong></p>
+    <p>
+      When a field change arrives at a widget, a static dispatch table maps the concrete type
+      of the bound component to the right update call — a text block gets its text set, a
+      progress bar gets its percentage set, an image gets its brush or colour updated. The
+      table is built once and reused. Adding support for a new component type means adding one
+      entry to the table; the widget base class and all existing bindings are untouched.
+    </p>
+
+    <p style="margin-top:0.75rem;"><strong style="color:var(--text)">Handler bridge and exclusive context.</strong></p>
+    <p>
+      Handlers are the only code that touches models directly. They are owned by the player
+      state and activated or deactivated by the player state machine. Only one handler is ever
+      active per context — switching from an own army to an enemy army calls the previous
+      handler's teardown before the new one initialises, so two handlers never write to the
+      same model simultaneously. Handlers never touch widgets; they only call into models.
+      Widgets never touch game systems; they only observe models.
+    </p>
+
+    <div class="tradeoff">
+      <strong>Trade-off:</strong> synchronous updates mean there is no batching — a handler
+      that writes ten fields fires ten broadcasts, each updating all bound widgets before the
+      next write runs. This is the primary UI CPU cost at campaign scale, where frequently
+      updated fields like resource counts have several listeners each. The string-based field
+      registry also has no compile-time validation; a misspelled field name silently binds
+      to nothing rather than producing a build error. Both are accepted costs: the synchronous
+      model is what makes the war-room responsiveness feel possible, and the asset-based
+      registry keeps field definitions decoupled from code compilation so designers can add
+      new fields without touching a header file.
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="case">
+    <span class="case-num">03 / Battle Performance</span>
     <h2>Frustum culling, parallelisation, and frame-spreading across the soldier simulation</h2>
 
     <p class="subhead problem">The problem</p>
