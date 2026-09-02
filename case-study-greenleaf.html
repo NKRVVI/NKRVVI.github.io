@@ -207,35 +207,114 @@
       down. An RTS squad command is structurally different. A player right-click must
       preempt an ongoing autonomous AI decision without argument. A mid-climb wall traversal
       must be non-interruptible — the squad cannot be redirected while soldiers are halfway
-      up a wall segment. A "move to position" order may silently require three legs in
-      sequence — path to the wall, climb it, path the other side — but the player sees only
+      up a wall segment. A "move to position" order may silently require three sequential
+      legs — path to the wall, climb it, path the other side — but the player sees only
       "moving." GAS has no model for command source priority, non-interruptible traversal
       phases, or a chained multi-leg order that reads as a single command to every caller.
     </p>
 
     <p class="subhead solution">The decision</p>
+
+    <p><strong style="color:var(--text)">Pooling and reset.</strong></p>
     <p>
-      Built <code>USquadAbility</code> — pooled <code>UObject</code> instances (one per
-      ability class per squad), initialized once, reset via CDO copy between uses.
+      <code>USquadAbility</code> instances are allocated once per ability class per squad and
+      never destroyed. Between uses, <code>ResetAbility()</code> restores the instance to its
+      CDO defaults by iterating every reflected property and copying from the class default
+      object in-place — a full state wipe without a heap allocation. Two properties are
+      excluded from the reset: the owning <code>Squad</code> pointer and the cached
+      <code>GameMode</code> reference, which stay bound for the lifetime of the pool entry.
+    </p>
+
+    <p style="margin-top:0.75rem;"><strong style="color:var(--text)">StartAbility flow.</strong></p>
+    <p>
+      Every incoming order passes through four sequential gates before it runs.
+      First, <strong>priority</strong>: if the source is not <code>Player</code> and a player
+      order is already active, the command is rejected — the sole exception is
+      <code>URetreatSquadAbility</code>, which a morale collapse can trigger autonomously even
+      over a live player order. Second, <strong>restart</strong>: if the incoming ability class
+      matches the current primary, <code>HandleRestart()</code> is called on the live instance;
+      returning false aborts the start without disrupting the running order. In practice,
+      <code>UMeleeAttackSquadAbility</code> uses this to reject reissuance against the same
+      target — the chase timer keeps running undisturbed. Third, <strong>lock</strong>: if
+      <code>CanOverride()</code> returns false on either the primary or the active secondary
+      leg, the incoming order is deferred into <code>PendingPrimaryAbility</code> (last-write
+      wins) and applied as soon as the lock clears. Fourth, <strong>teardown and commit</strong>:
+      the old primary receives <code>EndAbility(Interrupted)</code>, the secondary stack is
+      drained, <code>OnCommandOver</code> broadcasts, and the new ability is fetched from the
+      pool, set as <code>CurrentPrimaryAbility</code>, and started.
+    </p>
+
+    <p style="margin-top:0.75rem;"><strong style="color:var(--text)">Primary / secondary chain.</strong></p>
+    <p>
       <code>USquadAbilityComponent</code> keeps a pinned <code>CurrentPrimaryAbility</code>
-      for the lifetime of an order, and drains a <code>SecondaryActiveStack</code> of chain
-      legs beneath it. <code>ECommandSource</code> (Player &gt; AI &gt; Autonomous) gives
-      player orders absolute preemptive priority — a non-player command is silently rejected
-      while a player order is active, with the single exception of morale-driven auto-retreat,
-      which always gets through. <code>CanOverride()</code> lets any leg declare itself
-      non-interruptible; incoming orders queue into <code>PendingPrimaryAbility</code> and
-      auto-apply when the lock clears. The entire climb sequence — move, climb, move — reads
-      as one order to the squad AI and to the player.
+      for the entire lifetime of an order and drains a <code>SecondaryActiveStack</code> of
+      legs beneath it. When a primary issues a chain — a move that crosses terrain requiring a
+      climb — it calls <code>StartSecondaryStack(legs)</code>; the component pops and starts
+      each leg in turn as <code>CurrentSecondaryAbility</code>. A leg that ends with
+      <code>Success</code> advances to the next; a leg that ends with <code>Fail</code>
+      terminates the whole order. When the stack empties,
+      <code>CurrentPrimaryAbility->OnSecondaryStackComplete()</code> is called. The default
+      implementation ends the primary with <code>Success</code>. Abilities that need to keep
+      running — like <code>UMeleeAttackSquadAbility</code> — override it as a no-op, letting
+      the primary stay alive while the chase timer re-issues fresh movement legs on the next
+      tick.
+    </p>
+
+    <p style="margin-top:0.75rem;"><strong style="color:var(--text)">Melee chase loop.</strong></p>
+    <p>
+      <code>UMeleeAttackSquadAbility</code> fires a repeating two-second timer. Each tick
+      measures whether the target has moved beyond a threshold (20% of current distance,
+      clamped 300–1500 units). If so, it recomputes the formation destination and issues a
+      fresh <code>Move_Chain()</code> — which feeds a new set of nav legs into
+      <code>StartSecondaryStack()</code>. The leg runs and completes; since
+      <code>OnSecondaryStackComplete()</code> is a no-op, the primary stays pinned. Two
+      seconds later the timer fires again. The loop ends only when the ability explicitly
+      calls <code>EndAbility()</code> — on target death, timeout, or morale collapse. The
+      caller sees one continuous "attack" order for as long as the chase lasts.
+    </p>
+
+    <p style="margin-top:0.75rem;"><strong style="color:var(--text)">Interrupt and resume.</strong></p>
+    <p>
+      <code>PushInterruptAndStart()</code> caches the current primary's class into
+      <code>InterruptCache</code> (params are intentionally left empty) and immediately starts
+      a new ability over it. <code>ResumeInterruptedAbility()</code> restores the cached class
+      and calls <code>StartAbility()</code> with empty params, signalling the ability to
+      regenerate its own state from stored fields. The pattern assumes the interrupted ability
+      has kept enough state to restart itself — it cannot rely on the original call-site params
+      being present. The cache holds a single slot; trying to interrupt an already-interrupted
+      ability returns false rather than nesting further.
+    </p>
+
+    <p style="margin-top:0.75rem;"><strong style="color:var(--text)">Combat suppression.</strong></p>
+    <p>
+      When a move order is committed, <code>ComputeSuppressesCombat()</code> decides whether
+      it should block autonomous engagement: suppress if the incoming ability is not a combat
+      ability, and either the source is <code>Player</code> or the squad was already engaged.
+      If suppression applies, <code>bMoveSuppressCombat</code> is set on the squad's ECS state
+      fragment. Engagement processors check this flag before initiating new fights — a squad
+      given a move order retreats through a line of enemies without stopping to attack them.
+      The flag clears when the move order ends or a combat ability is started.
+    </p>
+
+    <p style="margin-top:0.75rem;"><strong style="color:var(--text)">Defend and engage-at-will.</strong></p>
+    <p>
+      <code>UDefendSquadAbility</code> runs a periodic scan for approaching threats — enemies
+      moving toward the squad with a dot product above a configured threshold. On finding one,
+      it issues a trivial formation move a few centimetres perpendicular to the threat vector,
+      rotating the squad in place without triggering a new engagement order. Actual combat is
+      left to the engagement processors which respect the squad's <code>bIsEngageAtWill</code>
+      flag. The ability is disabled and re-enabled as engage-at-will toggles, so the scan
+      never runs when it would have no effect.
     </p>
 
     <div class="tradeoff">
       <strong>Trade-off:</strong> no free attribute/cost framework — ability costs and
-      cooldowns are wired manually against <code>USquadStatsComponent</code> (morale,
-      fatigue, ammo). That's the price of squad-native semantics GAS can't express: command
-      source priority, mid-chain locking, and transparent leg chaining under a single
-      player-facing order. For a single-character RPG, GAS would have been the right call.
-      For a squad commanding hundreds of units across a battlefield, it would have been
-      the wrong abstraction from day one.
+      cooldowns are wired manually against <code>USquadStatsComponent</code> (morale, fatigue,
+      ammo). The CDO-copy reset is thorough but reflection-based, which costs more than a
+      hand-written clear; for abilities with large property sets that reset frequently, this
+      is measurable. Those are the prices of squad-native semantics GAS can't express:
+      command source priority, mid-chain locking, per-leg interruptibility, transparent
+      chaining, and a chase loop that reads as a single order to everything above it.
     </div>
   </div>
 
