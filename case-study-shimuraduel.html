@@ -158,6 +158,24 @@
   }
   footer a { color: var(--accent); }
 
+  .demo {
+    margin: 2.5rem 0 0.5rem;
+  }
+  .demo video {
+    width: 100%;
+    display: block;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: #000;
+  }
+  .demo figcaption {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 0.6rem;
+    text-align: center;
+  }
+
   @media (max-width: 640px) {
     .hero { padding: 3rem 0 2rem; }
   }
@@ -195,6 +213,15 @@
       an animation, an aggression-tracking parry, and a state tree that kept deadlocking
       whenever the real world interfered with it — and how each one got solved.
     </div>
+
+    <figure class="demo">
+      <video controls preload="metadata" playsinline poster="assets/shimuraduel-poster.jpg">
+        <source src="assets/shimuraduel-demo.mp4" type="video/mp4">
+        Your browser doesn't support embedded video —
+        <a href="assets/shimuraduel-demo.mp4">download the clip</a> instead.
+      </video>
+      <figcaption>Gameplay capture — the full duel: stances, posture, parries, and the boss's counter-parry.</figcaption>
+    </figure>
   </section>
 
   <!-- 1 -->
