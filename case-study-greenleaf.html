@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Greenleaf — Systems Case Study</title>
+<meta name="description" content="How the systems in Project Greenleaf were designed — problems, decisions, and trade-offs across an RTS / grand-strategy hybrid.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c11;
+    --bg-alt: #10131b;
+    --card: #151924;
+    --border: #232838;
+    --text: #e7eaf2;
+    --text-dim: #8a91a6;
+    --accent: #5eead4;
+    --accent2: #a78bfa;
+    --radius: 14px;
+    --maxw: 860px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.65;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(94,234,212,0.07), transparent 40%),
+      radial-gradient(circle at 85% 10%, rgba(167,139,250,0.07), transparent 40%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, .logo { font-family: 'Space Grotesk', 'Segoe UI', sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 1.5rem; }
+
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10,12,17,0.85);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav.wrap { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; max-width: var(--maxw); }
+  .logo { font-weight: 700; font-size: 1.05rem; }
+  .logo span { color: var(--accent); }
+  .back-link {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    transition: color 0.15s;
+  }
+  .back-link:hover { color: var(--accent); }
+
+  .hero { padding: 4rem 0 2.5rem; }
+  .eyebrow {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent2);
+    background: rgba(167,139,250,0.08);
+    border: 1px solid rgba(167,139,250,0.25);
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    margin-bottom: 1.3rem;
+  }
+  .hero h1 {
+    font-size: clamp(1.9rem, 5vw, 2.8rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .hero .tagline { margin-top: 0.7rem; font-size: 1.05rem; color: var(--text-dim); }
+
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 0.6rem;
+    margin-top: 1.5rem;
+  }
+  .meta-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+  }
+
+  .intro {
+    margin-top: 2rem;
+    padding: 1.4rem 1.6rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-dim);
+    font-size: 0.96rem;
+  }
+  .intro strong { color: var(--text); font-weight: 600; }
+
+  /* ---------- Case study blocks ---------- */
+  .case { padding: 2.8rem 0; border-top: 1px solid var(--border); }
+  .case-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+  }
+  .case h2 { font-size: 1.5rem; margin-top: 0.4rem; }
+
+  .subhead {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin: 1.5rem 0 0.5rem;
+  }
+  .subhead.problem { color: #fb7185; }
+  .subhead.solution { color: var(--accent); }
+
+  .case p { font-size: 0.94rem; color: var(--text-dim); }
+  .case p strong { color: var(--text); font-weight: 600; }
+
+  code, .inline-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85em;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    padding: 0.05rem 0.4rem;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+
+  .tradeoff {
+    margin-top: 1.1rem;
+    padding: 0.9rem 1.1rem;
+    border-left: 2px solid var(--accent2);
+    background: rgba(167,139,250,0.05);
+    border-radius: 0 8px 8px 0;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+  }
+  .tradeoff strong { color: var(--accent2); }
+
+  footer {
+    text-align: center;
+    padding: 3rem 0 2.5rem;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+    border-top: 1px solid var(--border);
+    margin-top: 1rem;
+  }
+  footer a { color: var(--accent); }
+
+  @media (max-width: 640px) {
+    .hero { padding: 3rem 0 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <nav class="wrap">
+    <a href="index.html#top" class="logo">NKRVVI<span>.</span></a>
+    <a href="index.html#professional" class="back-link">← Back to portfolio</a>
+  </nav>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <span class="eyebrow">Case Study</span>
+    <h1>Project Greenleaf</h1>
+    <p class="tagline">Designing the systems behind an RTS / grand-strategy hybrid — squads, campaigns, and everything between.</p>
+
+    <div class="meta-row">
+      <span class="meta-tag">Unreal Engine 5.7</span>
+      <span class="meta-tag">C++</span>
+      <span class="meta-tag">Senior Programmer</span>
+      <span class="meta-tag">Nytwolf Games</span>
+    </div>
+
+    <div class="intro">
+      This isn't a feature list. Greenleaf has a hex-map campaign layer feeding real-time
+      large-scale battles, which means the design problems compound: the AI making province
+      decisions has to hand off to the AI commanding squads on a battlefield, and the UI
+      displaying both has to do it at 60fps. Every system below started as a constraint the
+      hybrid genre imposes, and <strong>the interesting part was the decision</strong> —
+      especially when Unreal had an existing framework that looked like it might fit but didn't.
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <div class="case">
+    <span class="case-num">01 / Squad Ability System</span>
+    <h2>A purpose-built command queue, not GAS adapted to a squad</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      Unreal's Gameplay Ability System is built for character-scale abilities — one actor,
+      one ability activating, costs deducted from an attribute set, a cooldown timer ticking
+      down. An RTS squad command is structurally different. A player right-click must
+      preempt an ongoing autonomous AI decision without argument. A mid-climb wall traversal
+      must be non-interruptible — the squad cannot be redirected while soldiers are halfway
+      up a wall segment. A "move to position" order may silently require three legs in
+      sequence — path to the wall, climb it, path the other side — but the player sees only
+      "moving." GAS has no model for command source priority, non-interruptible traversal
+      phases, or a chained multi-leg order that reads as a single command to every caller.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      Built <code>USquadAbility</code> — pooled <code>UObject</code> instances (one per
+      ability class per squad), initialized once, reset via CDO copy between uses.
+      <code>USquadAbilityComponent</code> keeps a pinned <code>CurrentPrimaryAbility</code>
+      for the lifetime of an order, and drains a <code>SecondaryActiveStack</code> of chain
+      legs beneath it. <code>ECommandSource</code> (Player &gt; AI &gt; Autonomous) gives
+      player orders absolute preemptive priority — a non-player command is silently rejected
+      while a player order is active, with the single exception of morale-driven auto-retreat,
+      which always gets through. <code>CanOverride()</code> lets any leg declare itself
+      non-interruptible; incoming orders queue into <code>PendingPrimaryAbility</code> and
+      auto-apply when the lock clears. The entire climb sequence — move, climb, move — reads
+      as one order to the squad AI and to the player.
+    </p>
+
+    <div class="tradeoff">
+      <strong>Trade-off:</strong> no free attribute/cost framework — ability costs and
+      cooldowns are wired manually against <code>USquadStatsComponent</code> (morale,
+      fatigue, ammo). That's the price of squad-native semantics GAS can't express: command
+      source priority, mid-chain locking, and transparent leg chaining under a single
+      player-facing order. For a single-character RPG, GAS would have been the right call.
+      For a squad commanding hundreds of units across a battlefield, it would have been
+      the wrong abstraction from day one.
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="case">
+    <span class="case-num">02 / Battle Performance</span>
+    <h2>Frustum culling, parallelisation, and frame-spreading across the soldier simulation</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      A large-scale battle runs hundreds of Mass Entity soldiers simultaneously. Several
+      per-frame costs were accumulating: transform sync (position, rotation, ground alignment,
+      charge VFX) ran for every soldier regardless of camera visibility; animation state
+      classification and <code>EnterState</code> calls ran serially on the game thread; the
+      spatial grid rebuilt its cell occupancy list every frame with redundant allocation;
+      formation anchor positions recomputed all squads on the same frame; and the vertex
+      animation batch update had no LOD-based throttling. Each of these was cheap in isolation
+      — at hundreds of soldiers, ticking in the same frame window, they compounded.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      The work was addressed in layers, each targeting a different bottleneck:
+    </p>
+
+    <p style="margin-top:0.9rem;"><strong style="color:var(--text)">Frustum culling + distance-banded frame skipping.</strong></p>
+    <p>
+      Built <code>UFrustumFunctionsLibrary</code> to test whether a world location is inside
+      the camera frustum, returning Z depth alongside the boolean. Transform sync was moved
+      into a dedicated <code>UBatchSyncProcessor</code> that gates on two layers: units outside
+      the frustum are skipped entirely; in-frustum units are placed into distance bands —
+      near (0–10k, every frame), mid (10k–25k, every 3 frames), far (25k+, every 5 frames).
+      A unit updates only when <code>GFrameCounter % FrameInterval == LastFrameProcessed %
+      FrameInterval</code>. The modulo stagger spreads far-range updates across frames rather
+      than bursting them on the same tick. <code>UBatchSyncProcessor</code> and
+      <code>UUnitRagdollSyncProcessor</code> were moved to PostPhysics so they read
+      ground-snapped transforms from the current frame rather than one frame stale.
+    </p>
+
+    <p style="margin-top:0.9rem;"><strong style="color:var(--text)">Ground alignment as a parallel processor.</strong></p>
+    <p>
+      Ground alignment (terrain raycast snap) was extracted from the render sync loop into
+      <code>UUnitMovementGroundAlignProcessor</code>, which runs via
+      <code>ParallelForEachEntityChunk</code> in PostPhysics after overlap resolve and wall
+      processors. A position cache (<code>LastGroundAlignLocation</code>) skips the trace
+      entirely when a unit's XY hasn't moved more than 1 unit since the last snap — terrain
+      is static, so a unit standing still never needs to retrace.
+    </p>
+
+    <p style="margin-top:0.9rem;"><strong style="color:var(--text)">Animation state classification across chunks in parallel.</strong></p>
+    <p>
+      Animation classification previously used <code>ParallelFor</code> within a single chunk,
+      writing results to staging fields on <code>FUnitRenderFragment</code>
+      (<code>PendingAnimState</code>, <code>bPendingIsChargedAttack</code>, etc.), then
+      consuming them in a serial <code>EnterState</code> pass. Chunks were still processed one
+      at a time. Replaced with <code>Query.ParallelForEachEntityChunk</code> — classification
+      and <code>EnterState</code> now run across all chunks simultaneously, with results kept
+      as stack locals. The five staging fields were deleted from the fragment entirely. The
+      blocker for true parallelism was game-thread-only calls inside <code>EnterState</code>
+      (timer registration, <code>AnimationStateChanged</code> broadcast); these were wrapped in
+      <code>AsyncTask(ENamedThreads::GameThread)</code> with weak-pointer guards, making
+      <code>EnterState</code> safe to call from any worker thread.
+    </p>
+
+    <p style="margin-top:0.9rem;"><strong style="color:var(--text)">Spatial grid cell insertion parallelised.</strong></p>
+    <p>
+      The spatial grid's cell population loop was switched from
+      <code>ForEachEntityChunk</code> to <code>ParallelForEachEntityChunk</code>. Cell writes
+      are now guarded by a per-cell <code>FCriticalSection</code> (one lock per cell,
+      allocated at <code>InitGrid</code> time), so parallel chunk workers never contend on the
+      same cell entry. Redundant cell clearing was also removed — the grid's own rebuild
+      already zeroed cells — and <code>CellCounts</code> was promoted to a member to eliminate
+      a heap allocation every frame.
+    </p>
+
+    <p style="margin-top:0.9rem;"><strong style="color:var(--text)">Formation anchor computation staggered per squad.</strong></p>
+    <p>
+      Formation anchor positions previously recomputed for all squads at a fixed
+      <code>UpdateInterval</code> timer, which dumped the full work onto the game thread
+      simultaneously every 0.1s. Replaced with per-squad staggering:
+      <code>(GFrameCounter + Entity.AsNumber()) % 6 != 0 → skip</code>. Each squad still
+      recomputes at ~10Hz, but the entity handle distributes which frame in the cycle is each
+      squad's turn — the game-thread queue gets a steady drip instead of a burst.
+    </p>
+
+    <p style="margin-top:0.9rem;"><strong style="color:var(--text)">Vertex animation LOD frame-skipping.</strong></p>
+    <p>
+      <code>VAWorldSubsystem::BatchUpdateTransforms</code> already ran via <code>ParallelFor</code>.
+      LOD tier 2 components now skip every other frame; tier 3 skip three out of four frames.
+      The stagger uses <code>(GFrameCounter + ComponentIndex) &amp; mask</code> — a bare frame
+      counter would burst all tier-2/3 components on the same frame.
+      <code>AdvanceLODAccumulator(DeltaTime)</code> keeps the LOD time accumulator ticking on
+      skipped frames so the configured update rate is preserved when the call does run.
+    </p>
+
+    <div class="tradeoff">
+      <strong>Trade-off:</strong> two correctness issues emerged from skipping work. First,
+      soldiers reaching wall-climb transition while outside the frustum never had their actor
+      snapped to the wall top — fixed with <code>UWallTransitionResolveProcessor</code>, a
+      narrow PostPhysics processor that handles the one-frame transition snap unconditionally.
+      Second, deferring <code>AnimationStateChanged</code> via <code>AsyncTask</code>
+      introduces a one-frame lag on broadcast delivery — imperceptible at animation state
+      granularity, where idle/run transitions have no frame-exact requirement. The pattern
+      throughout is the same: keep the hot path fast, isolate correctness edge cases into their
+      own narrow processors rather than adding branches to the common path.
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <a href="index.html#top">← Back to NKRVVI's portfolio</a>
+</footer>
+
+</body>
+</html>
