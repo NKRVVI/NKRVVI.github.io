@@ -217,104 +217,90 @@
 
     <p><strong style="color:var(--text)">Pooling and reset.</strong></p>
     <p>
-      <code>USquadAbility</code> instances are allocated once per ability class per squad and
-      never destroyed. Between uses, <code>ResetAbility()</code> restores the instance to its
-      CDO defaults by iterating every reflected property and copying from the class default
-      object in-place — a full state wipe without a heap allocation. Two properties are
-      excluded from the reset: the owning <code>Squad</code> pointer and the cached
-      <code>GameMode</code> reference, which stay bound for the lifetime of the pool entry.
+      One ability instance is allocated per ability type per squad and never destroyed.
+      Between uses, the instance is wiped back to its default state by copying every
+      reflected property from the class archetype in-place — a full reset without a heap
+      allocation. The owning squad reference and cached game mode are excluded from this
+      wipe and stay bound for the lifetime of the pool entry.
     </p>
 
-    <p style="margin-top:0.75rem;"><strong style="color:var(--text)">StartAbility flow.</strong></p>
+    <p style="margin-top:0.75rem;"><strong style="color:var(--text)">Order start flow.</strong></p>
     <p>
-      Every incoming order passes through four sequential gates before it runs.
-      First, <strong>priority</strong>: if the source is not <code>Player</code> and a player
-      order is already active, the command is rejected — the sole exception is
-      <code>URetreatSquadAbility</code>, which a morale collapse can trigger autonomously even
-      over a live player order. Second, <strong>restart</strong>: if the incoming ability class
-      matches the current primary, <code>HandleRestart()</code> is called on the live instance;
-      returning false aborts the start without disrupting the running order. In practice,
-      <code>UMeleeAttackSquadAbility</code> uses this to reject reissuance against the same
-      target — the chase timer keeps running undisturbed. Third, <strong>lock</strong>: if
-      <code>CanOverride()</code> returns false on either the primary or the active secondary
-      leg, the incoming order is deferred into <code>PendingPrimaryAbility</code> (last-write
-      wins) and applied as soon as the lock clears. Fourth, <strong>teardown and commit</strong>:
-      the old primary receives <code>EndAbility(Interrupted)</code>, the secondary stack is
-      drained, <code>OnCommandOver</code> broadcasts, and the new ability is fetched from the
-      pool, set as <code>CurrentPrimaryAbility</code>, and started.
+      Every incoming order passes through four sequential gates. First,
+      <strong>priority</strong>: if the command didn't come from the player and a player
+      order is already active, the command is rejected — the sole exception is the retreat
+      ability, which a morale collapse can force even over a live player order. Second,
+      <strong>restart</strong>: if the incoming type matches the ability already running,
+      the live instance decides whether to accept or refuse the re-issue. The melee attack
+      ability uses this to reject reissuance against the same target, keeping the chase
+      timer running undisturbed. Third, <strong>lock</strong>: if the running primary or
+      any active secondary leg has declared itself non-interruptible, the incoming order is
+      held in a single pending slot and applied as soon as the lock clears. Fourth,
+      <strong>teardown and commit</strong>: the old primary is interrupted, the secondary
+      stack is cleared, listeners are notified, and the new ability is pulled from the pool
+      and started.
     </p>
 
     <p style="margin-top:0.75rem;"><strong style="color:var(--text)">Primary / secondary chain.</strong></p>
     <p>
-      <code>USquadAbilityComponent</code> keeps a pinned <code>CurrentPrimaryAbility</code>
-      for the entire lifetime of an order and drains a <code>SecondaryActiveStack</code> of
-      legs beneath it. When a primary issues a chain — a move that crosses terrain requiring a
-      climb — it calls <code>StartSecondaryStack(legs)</code>; the component pops and starts
-      each leg in turn as <code>CurrentSecondaryAbility</code>. A leg that ends with
-      <code>Success</code> advances to the next; a leg that ends with <code>Fail</code>
-      terminates the whole order. When the stack empties,
-      <code>CurrentPrimaryAbility->OnSecondaryStackComplete()</code> is called. The default
-      implementation ends the primary with <code>Success</code>. Abilities that need to keep
-      running — like <code>UMeleeAttackSquadAbility</code> — override it as a no-op, letting
-      the primary stay alive while the chase timer re-issues fresh movement legs on the next
-      tick.
+      One ability is pinned as the primary for the entire lifetime of an order. Beneath it,
+      a stack of secondary legs drains in sequence — each runs to completion before the next
+      begins. A leg that fails terminates the whole order. When the stack empties, the primary
+      decides what happens next. The default is to end with success. Abilities that need to
+      keep running — the melee attack — override that callback as a no-op, letting the primary
+      stay alive while it re-issues fresh movement legs on the next timer tick.
     </p>
 
     <p style="margin-top:0.75rem;"><strong style="color:var(--text)">Melee chase loop.</strong></p>
     <p>
-      <code>UMeleeAttackSquadAbility</code> fires a repeating two-second timer. Each tick
-      measures whether the target has moved beyond a threshold (20% of current distance,
-      clamped 300–1500 units). If so, it recomputes the formation destination and issues a
-      fresh <code>Move_Chain()</code> — which feeds a new set of nav legs into
-      <code>StartSecondaryStack()</code>. The leg runs and completes; since
-      <code>OnSecondaryStackComplete()</code> is a no-op, the primary stays pinned. Two
-      seconds later the timer fires again. The loop ends only when the ability explicitly
-      calls <code>EndAbility()</code> — on target death, timeout, or morale collapse. The
-      caller sees one continuous "attack" order for as long as the chase lasts.
+      The melee attack ability fires a repeating two-second timer. Each tick checks whether
+      the target has moved beyond a threshold — 20% of current distance, clamped between 300
+      and 1500 units. If so, it recomputes the formation destination and issues a fresh
+      movement chain, which becomes a new set of secondary legs beneath the pinned primary.
+      The legs run and drain; because the completion callback is a no-op, the primary stays
+      alive. The loop ends only on target death, timeout, or morale collapse. The caller sees
+      one continuous attack order for however long the chase lasts.
     </p>
 
     <p style="margin-top:0.75rem;"><strong style="color:var(--text)">Interrupt and resume.</strong></p>
     <p>
-      <code>PushInterruptAndStart()</code> caches the current primary's class into
-      <code>InterruptCache</code> (params are intentionally left empty) and immediately starts
-      a new ability over it. <code>ResumeInterruptedAbility()</code> restores the cached class
-      and calls <code>StartAbility()</code> with empty params, signalling the ability to
-      regenerate its own state from stored fields. The pattern assumes the interrupted ability
-      has kept enough state to restart itself — it cannot rely on the original call-site params
-      being present. The cache holds a single slot; trying to interrupt an already-interrupted
-      ability returns false rather than nesting further.
+      A running ability can be interrupted and saved to a single-slot cache. A new ability
+      starts immediately over it. To resume, the cached type is restarted with no parameters —
+      a signal to the ability that it must regenerate its own state from whatever it stored
+      internally, since the original parameters are gone. The cache holds only one entry;
+      trying to interrupt an already-interrupted ability fails rather than nesting.
     </p>
 
     <p style="margin-top:0.75rem;"><strong style="color:var(--text)">Combat suppression.</strong></p>
     <p>
-      When a move order is committed, <code>ComputeSuppressesCombat()</code> decides whether
-      it should block autonomous engagement: suppress if the incoming ability is not a combat
-      ability, and either the source is <code>Player</code> or the squad was already engaged.
-      If suppression applies, <code>bMoveSuppressCombat</code> is set on the squad's ECS state
-      fragment. Engagement processors check this flag before initiating new fights — a squad
-      given a move order retreats through a line of enemies without stopping to attack them.
-      The flag clears when the move order ends or a combat ability is started.
+      When a movement order is committed, the system decides whether it should block
+      autonomous engagement. The rule: suppress if the incoming ability is not a combat
+      ability, and either the command came from the player or the squad was already in a
+      fight. When suppression is active, engagement processors ignore nearby enemies for
+      the duration of the move — a squad given a withdrawal order passes through an enemy
+      line without stopping to fight. The suppression clears when the move ends or a combat
+      ability takes over.
     </p>
 
     <p style="margin-top:0.75rem;"><strong style="color:var(--text)">Defend and engage-at-will.</strong></p>
     <p>
-      <code>UDefendSquadAbility</code> runs a periodic scan for approaching threats — enemies
-      moving toward the squad with a dot product above a configured threshold. On finding one,
-      it issues a trivial formation move a few centimetres perpendicular to the threat vector,
-      rotating the squad in place without triggering a new engagement order. Actual combat is
-      left to the engagement processors which respect the squad's <code>bIsEngageAtWill</code>
-      flag. The ability is disabled and re-enabled as engage-at-will toggles, so the scan
-      never runs when it would have no effect.
+      The defend ability runs a periodic scan for approaching threats — enemies moving
+      toward the squad above a configured angle threshold. On finding one, it issues a
+      minimal formation adjustment to rotate the squad toward the threat without triggering
+      a new engagement order. Actual combat is left to the engagement processors, which
+      respect the squad's engage-at-will setting. The ability disables itself when
+      engage-at-will is turned off and re-enables when it turns back on, so the scan never
+      runs when it would have no effect.
     </p>
 
     <div class="tradeoff">
-      <strong>Trade-off:</strong> no free attribute/cost framework — ability costs and
-      cooldowns are wired manually against <code>USquadStatsComponent</code> (morale, fatigue,
-      ammo). The CDO-copy reset is thorough but reflection-based, which costs more than a
-      hand-written clear; for abilities with large property sets that reset frequently, this
-      is measurable. Those are the prices of squad-native semantics GAS can't express:
-      command source priority, mid-chain locking, per-leg interruptibility, transparent
-      chaining, and a chase loop that reads as a single order to everything above it.
+      <strong>Trade-off:</strong> no free attribute or cost framework — ability costs and
+      cooldowns are wired manually against the squad's stat component (morale, fatigue,
+      ammo). The reflection-based reset is thorough but costs more than a hand-written
+      clear; for abilities with large state and high reset frequency, this is measurable.
+      Those are the prices of squad-native semantics GAS can't express: command source
+      priority, mid-chain locking, per-leg interruptibility, transparent chaining, and a
+      chase loop that reads as a single order to everything above it.
     </div>
   </div>
 
@@ -328,11 +314,11 @@
       A large-scale battle runs hundreds of Mass Entity soldiers simultaneously. Several
       per-frame costs were accumulating: transform sync (position, rotation, ground alignment,
       charge VFX) ran for every soldier regardless of camera visibility; animation state
-      classification and <code>EnterState</code> calls ran serially on the game thread; the
-      spatial grid rebuilt its cell occupancy list every frame with redundant allocation;
-      formation anchor positions recomputed all squads on the same frame; and the vertex
-      animation batch update had no LOD-based throttling. Each of these was cheap in isolation
-      — at hundreds of soldiers, ticking in the same frame window, they compounded.
+      classification and state transition calls ran serially on the game thread; the spatial
+      grid rebuilt its cell occupancy list every frame with redundant allocation; formation
+      anchor positions recomputed for all squads on the same frame; and the vertex animation
+      batch update had no LOD-based throttling. Each of these was cheap in isolation — at
+      hundreds of soldiers, ticking in the same frame window, they compounded.
     </p>
 
     <p class="subhead solution">The decision</p>
@@ -342,84 +328,76 @@
 
     <p style="margin-top:0.9rem;"><strong style="color:var(--text)">Frustum culling + distance-banded frame skipping.</strong></p>
     <p>
-      Built <code>UFrustumFunctionsLibrary</code> to test whether a world location is inside
-      the camera frustum, returning Z depth alongside the boolean. Transform sync was moved
-      into a dedicated <code>UBatchSyncProcessor</code> that gates on two layers: units outside
-      the frustum are skipped entirely; in-frustum units are placed into distance bands —
-      near (0–10k, every frame), mid (10k–25k, every 3 frames), far (25k+, every 5 frames).
-      A unit updates only when <code>GFrameCounter % FrameInterval == LastFrameProcessed %
-      FrameInterval</code>. The modulo stagger spreads far-range updates across frames rather
-      than bursting them on the same tick. <code>UBatchSyncProcessor</code> and
-      <code>UUnitRagdollSyncProcessor</code> were moved to PostPhysics so they read
-      ground-snapped transforms from the current frame rather than one frame stale.
+      A utility tests whether a world location is inside the camera frustum, returning depth
+      alongside the boolean. Transform sync was moved into a dedicated batch processor that
+      gates on two layers: units outside the frustum are skipped entirely; in-frustum units are
+      placed into distance bands — near (0–10k, every frame), mid (10k–25k, every 3 frames),
+      far (25k+, every 5 frames). A modulo stagger spreads far-range updates across frames
+      rather than bursting them on the same tick. The transform sync and ragdoll sync steps
+      were both moved to PostPhysics so they read ground-snapped transforms from the current
+      frame rather than one frame stale.
     </p>
 
     <p style="margin-top:0.9rem;"><strong style="color:var(--text)">Ground alignment as a parallel processor.</strong></p>
     <p>
-      Ground alignment (terrain raycast snap) was extracted from the render sync loop into
-      <code>UUnitMovementGroundAlignProcessor</code>, which runs via
-      <code>ParallelForEachEntityChunk</code> in PostPhysics after overlap resolve and wall
-      processors. A position cache (<code>LastGroundAlignLocation</code>) skips the trace
-      entirely when a unit's XY hasn't moved more than 1 unit since the last snap — terrain
+      Ground alignment (terrain raycast snap) was extracted from the render sync loop into its
+      own processor, which runs in parallel across all entity chunks in PostPhysics, after
+      overlap resolve and wall processors. A cached last position skips the trace entirely when
+      a unit's horizontal position hasn't moved more than 1 unit since the last snap — terrain
       is static, so a unit standing still never needs to retrace.
     </p>
 
     <p style="margin-top:0.9rem;"><strong style="color:var(--text)">Animation state classification across chunks in parallel.</strong></p>
     <p>
-      Animation classification previously used <code>ParallelFor</code> within a single chunk,
-      writing results to staging fields on <code>FUnitRenderFragment</code>
-      (<code>PendingAnimState</code>, <code>bPendingIsChargedAttack</code>, etc.), then
-      consuming them in a serial <code>EnterState</code> pass. Chunks were still processed one
-      at a time. Replaced with <code>Query.ParallelForEachEntityChunk</code> — classification
-      and <code>EnterState</code> now run across all chunks simultaneously, with results kept
-      as stack locals. The five staging fields were deleted from the fragment entirely. The
-      blocker for true parallelism was game-thread-only calls inside <code>EnterState</code>
-      (timer registration, <code>AnimationStateChanged</code> broadcast); these were wrapped in
-      <code>AsyncTask(ENamedThreads::GameThread)</code> with weak-pointer guards, making
-      <code>EnterState</code> safe to call from any worker thread.
+      Animation classification previously ran in parallel within a single chunk, writing results
+      to staging fields on the render data fragment, then consuming them in a serial state
+      transition pass — chunks were still processed one at a time. This was replaced so that
+      classification and state transitions run across all chunks simultaneously, keeping results
+      as stack locals rather than writing to shared fragment fields. The intermediate staging
+      fields were deleted from the fragment entirely. The blocker for true parallelism was that
+      state transitions made game-thread-only calls (timer registration and state change
+      broadcasts); these were deferred to the game thread asynchronously with weak-pointer
+      guards, making the transition logic safe to call from any worker thread.
     </p>
 
     <p style="margin-top:0.9rem;"><strong style="color:var(--text)">Spatial grid cell insertion parallelised.</strong></p>
     <p>
-      The spatial grid's cell population loop was switched from
-      <code>ForEachEntityChunk</code> to <code>ParallelForEachEntityChunk</code>. Cell writes
-      are now guarded by a per-cell <code>FCriticalSection</code> (one lock per cell,
-      allocated at <code>InitGrid</code> time), so parallel chunk workers never contend on the
-      same cell entry. Redundant cell clearing was also removed — the grid's own rebuild
-      already zeroed cells — and <code>CellCounts</code> was promoted to a member to eliminate
-      a heap allocation every frame.
+      The spatial grid's cell population loop was switched to run in parallel across entity
+      chunks. Cell writes are guarded by a per-cell lock (one lock per cell, allocated once at
+      grid initialisation), so parallel chunk workers never contend on the same cell entry.
+      Redundant cell clearing was also removed — the grid's own rebuild already zeroed cells —
+      and a count array was promoted to a member to eliminate a heap allocation every frame.
     </p>
 
     <p style="margin-top:0.9rem;"><strong style="color:var(--text)">Formation anchor computation staggered per squad.</strong></p>
     <p>
-      Formation anchor positions previously recomputed for all squads at a fixed
-      <code>UpdateInterval</code> timer, which dumped the full work onto the game thread
-      simultaneously every 0.1s. Replaced with per-squad staggering:
-      <code>(GFrameCounter + Entity.AsNumber()) % 6 != 0 → skip</code>. Each squad still
-      recomputes at ~10Hz, but the entity handle distributes which frame in the cycle is each
-      squad's turn — the game-thread queue gets a steady drip instead of a burst.
+      Formation anchor positions previously recomputed for all squads on a fixed timer,
+      dumping the full work onto the game thread simultaneously every 0.1s. This was replaced
+      with per-squad staggering using each squad's entity identity as an offset into a 6-frame
+      cycle. Each squad still recomputes at roughly 10Hz, but the identity-based offset
+      distributes which frame in the cycle belongs to each squad — the game thread gets a
+      steady drip instead of a burst.
     </p>
 
     <p style="margin-top:0.9rem;"><strong style="color:var(--text)">Vertex animation LOD frame-skipping.</strong></p>
     <p>
-      <code>VAWorldSubsystem::BatchUpdateTransforms</code> already ran via <code>ParallelFor</code>.
-      LOD tier 2 components now skip every other frame; tier 3 skip three out of four frames.
-      The stagger uses <code>(GFrameCounter + ComponentIndex) &amp; mask</code> — a bare frame
-      counter would burst all tier-2/3 components on the same frame.
-      <code>AdvanceLODAccumulator(DeltaTime)</code> keeps the LOD time accumulator ticking on
-      skipped frames so the configured update rate is preserved when the call does run.
+      The vertex animation batch update already ran via parallel iteration. LOD tier 2
+      components now skip every other frame; tier 3 skip three out of four frames. The stagger
+      uses each component's index within the batch as an offset — a bare frame counter would
+      burst all distant components on the same frame. A time accumulator continues to advance
+      on skipped frames so the configured update rate is preserved when the call does run.
     </p>
 
     <div class="tradeoff">
       <strong>Trade-off:</strong> two correctness issues emerged from skipping work. First,
-      soldiers reaching wall-climb transition while outside the frustum never had their actor
-      snapped to the wall top — fixed with <code>UWallTransitionResolveProcessor</code>, a
-      narrow PostPhysics processor that handles the one-frame transition snap unconditionally.
-      Second, deferring <code>AnimationStateChanged</code> via <code>AsyncTask</code>
-      introduces a one-frame lag on broadcast delivery — imperceptible at animation state
-      granularity, where idle/run transitions have no frame-exact requirement. The pattern
-      throughout is the same: keep the hot path fast, isolate correctness edge cases into their
-      own narrow processors rather than adding branches to the common path.
+      soldiers reaching a wall-climb transition while outside the frustum never had their
+      actor snapped to the wall top — fixed with a dedicated narrow processor that handles
+      the one-frame transition snap unconditionally, outside the frustum gate. Second,
+      deferring state change broadcasts asynchronously introduces a one-frame lag on delivery
+      — imperceptible at animation state granularity, where idle/run transitions have no
+      frame-exact requirement. The pattern throughout is the same: keep the hot path fast,
+      isolate correctness edge cases into their own narrow processors rather than adding
+      branches to the common path.
     </div>
   </div>
 

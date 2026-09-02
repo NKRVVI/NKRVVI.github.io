@@ -213,15 +213,13 @@
 
     <p class="subhead solution">The decision</p>
     <p>
-      <code>AISF_CameraPlayerController</code> tracks a single
-      <code>EControllerState</code> enum as the source of truth for player intent
-      (Move / PrimaryFire / TossGrenade / Melee / Heal / Repair / EnterExit…).
-      Every action is a <code>SetStateToX()</code> / <code>ShowXOption()</code> pair —
-      entering a state drives cursor feedback and valid-target highlighting, and a
-      left-click just asks "what does the current state do with this click." Squad
-      movement layers formation math (column, wedge, line, staggered column) on top
-      of the same click point, and marquee/shift-select feed the same
-      <code>ChosenSoldiers</code> array every state reads from.
+      The player controller tracks a single intent enum as the source of truth for what
+      a click means right now (Move / PrimaryFire / TossGrenade / Melee / Heal /
+      Repair / EnterExit…). Entering a state drives cursor feedback and valid-target
+      highlighting; a left-click simply asks "what does the current state do with this
+      position." Squad movement layers formation math (column, wedge, line, staggered
+      column) on top of the same click point, and marquee and shift-select feed the same
+      soldier selection that every state reads from.
     </p>
 
     <div class="tradeoff">
@@ -249,15 +247,14 @@
 
     <p class="subhead solution">The decision</p>
     <p>
-      Rather than write vision/detection from scratch, I built on top of proven
-      systems — the <code>FogOfWar</code> plugin for per-unit vision reveal, and
-      <code>UAIPerceptionComponent</code> (sight + hearing) for enemy awareness — and
-      spent my own engineering budget on the layer that was actually missing: making
-      it visible. <code>UISF_VisionConeIndicatorComponent</code> renders each enemy's
-      live sight cone to the player, and <code>ISF_WeaponRangeUIComponent</code> /
-      <code>ISF_WeaponRadiusIndicator</code> do the same for engagement ranges. A
-      depletable night-vision resource (timed, UI-tracked) turns "can I see" into a
-      tactical decision rather than a toggle.
+      Rather than write vision and detection from scratch, I built on proven systems —
+      a fog-of-war plugin for per-unit vision reveal and Unreal's built-in perception
+      system (sight and hearing) for enemy awareness — and spent my engineering budget
+      on the layer that was actually missing: making it legible. Custom components render
+      each enemy's live sight cone and weapon engagement range directly into the world,
+      so the player can see why an enemy is about to notice them before it happens. A
+      depletable night-vision resource with a UI timer turns "can I see" into a tactical
+      decision rather than a permanent toggle.
     </p>
 
     <div class="tradeoff">
@@ -284,17 +281,15 @@
 
     <p class="subhead solution">The decision</p>
     <p>
-      I built enemy brains on UE5's <strong>GameplayStateTree</strong> instead of
-      Behavior Trees, and split the logic into small, reusable building blocks:
-      Evaluators that answer yes/no questions (<code>STE_IsWeaponEmpty</code>,
-      <code>STE_IsCombatTargetDead</code>, <code>STE_GetCombatTarget</code>) and Tasks
-      that do one thing (<code>STT_ShootTarget</code>, <code>STT_Reload</code>). Each
-      archetype's tree is then <em>composed</em> from these shared pieces plus its own
-      patrol-route evaluator, rather than duplicating logic. Cover-seeking works the
-      same way at the query level: <code>UISF_CoverTraceEnvQueryTest</code> is a
-      custom EQS test that scores candidate points against a threat context, so cover
-      is discovered dynamically from level geometry instead of requiring hand-placed
-      cover markers on every map.
+      I built enemy brains on UE5's Gameplay State Tree instead of Behavior Trees, and
+      split the logic into small, reusable building blocks: evaluators that answer yes/no
+      questions (weapon empty, target dead, target in range) and tasks that do one thing
+      (shoot, reload, move to patrol point). Each archetype's tree is <em>composed</em>
+      from these shared pieces plus its own patrol-route evaluator, rather than
+      duplicating logic. Cover-seeking works the same way at the query level: a custom
+      EQS test scores candidate positions against the current threat context, so cover is
+      discovered dynamically from level geometry instead of requiring hand-placed markers
+      on every map.
     </p>
 
     <div class="tradeoff">
@@ -323,17 +318,14 @@
 
     <p class="subhead solution">The decision</p>
     <p>
-      Combat logic lives in <code>UISF_CombatComponent</code>, an
-      <code>ActorComponent</code> attached to <em>any</em> character — player soldier
-      or AI enemy — so firing, reloading, and weapon switching are written once and
-      driven by either a player click or an AI Task. Weapons share a common
-      <code>AISF_GunMaster</code> base with <code>ISF_HitscanGun</code> and
-      <code>ISF_ProjectileGun</code> subclasses. On the receiving end, damage/interaction
-      is expressed as interfaces — <code>ISF_InjurableInterface</code>,
-      <code>ISF_HealableInterface</code>, <code>ISF_ExplodableInterface</code>,
-      <code>ISF_RepairableInterface</code> — so a truck implements "repairable, not
-      injurable" and a soldier implements the opposite, without either one caring what
-      concrete class is on the other end of a hit.
+      Combat logic lives in a shared component that attaches to any character — player
+      soldier or AI enemy — so firing, reloading, and weapon switching are written once
+      and driven by either a player click or an AI task. Weapons share a common base
+      with hitscan and projectile subclasses. On the receiving end, damage and
+      interaction are expressed as typed interfaces — injurable, healable, explodable,
+      repairable — so a truck implements repairable but not injurable, and a soldier
+      implements the opposite, without either one caring about the concrete type on the
+      other end of a hit.
     </p>
 
     <div class="tradeoff">
@@ -360,16 +352,13 @@
 
     <p class="subhead solution">The decision</p>
     <p>
-      Each subsystem owns its own serialization contract: <code>SaveCombatData()</code>
-      /<code>LoadCombatData()</code> on the combat component,
-      <code>SaveControllerData()</code>/<code>LoadControllerData()</code> on the
-      player controller, and equivalents for soldiers, trucks, and the pilot — each
-      returning a small typed struct (<code>FCombatData</code>, <code>FTruckData</code>,
-      <code>FControllerData</code>…). <code>ISF_LevelSaveGame</code> just aggregates
-      structs it doesn't need to understand. Mission objectives follow the same
-      separation-of-concerns idea one level up: <code>UISF_ObjectivesSubsystem</code>
-      loads objective <em>definitions</em> from data tables (designer-editable, no
-      recompile) and keeps objective <em>progress</em> as separate runtime/save state.
+      Each subsystem owns its own save and load contract — the combat component, the
+      player controller, soldiers, trucks, and the pilot each serialize into a small
+      typed struct. The top-level save object just aggregates those structs without
+      needing to understand any of them. Mission objectives follow the same idea one
+      level up: objective <em>definitions</em> live in data tables (designer-editable,
+      no recompile) and objective <em>progress</em> is kept as separate runtime and save
+      state, so a designer can add a new objective type without touching the save system.
     </p>
 
     <div class="tradeoff">
