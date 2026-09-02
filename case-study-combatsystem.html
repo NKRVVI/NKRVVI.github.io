@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Combat System — Systems Case Study</title>
+<meta name="description" content="A C++-only sandbox for third-person melee combat in Unreal — the problems faced building shared player/AI combat, group aggro, and motion-warped attacks, and how each was solved.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c11;
+    --bg-alt: #10131b;
+    --card: #151924;
+    --border: #232838;
+    --text: #e7eaf2;
+    --text-dim: #8a91a6;
+    --accent: #5eead4;
+    --accent2: #a78bfa;
+    --radius: 14px;
+    --maxw: 860px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.65;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(94,234,212,0.07), transparent 40%),
+      radial-gradient(circle at 85% 10%, rgba(167,139,250,0.07), transparent 40%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, .logo { font-family: 'Space Grotesk', 'Segoe UI', sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 1.5rem; }
+
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10,12,17,0.85);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav.wrap { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; max-width: var(--maxw); }
+  .logo { font-weight: 700; font-size: 1.05rem; }
+  .logo span { color: var(--accent); }
+  .back-link {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    transition: color 0.15s;
+  }
+  .back-link:hover { color: var(--accent); }
+
+  .hero { padding: 4rem 0 2.5rem; }
+  .eyebrow {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent2);
+    background: rgba(167,139,250,0.08);
+    border: 1px solid rgba(167,139,250,0.25);
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    margin-bottom: 1.3rem;
+  }
+  .hero h1 {
+    font-size: clamp(1.9rem, 5vw, 2.8rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .hero .tagline { margin-top: 0.7rem; font-size: 1.05rem; color: var(--text-dim); }
+
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 0.6rem;
+    margin-top: 1.5rem;
+  }
+  .meta-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+  }
+
+  .intro {
+    margin-top: 2rem;
+    padding: 1.4rem 1.6rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-dim);
+    font-size: 0.96rem;
+  }
+  .intro strong { color: var(--text); font-weight: 600; }
+
+  /* ---------- Case study blocks ---------- */
+  .case { padding: 2.8rem 0; border-top: 1px solid var(--border); }
+  .case-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+  }
+  .case h2 { font-size: 1.5rem; margin-top: 0.4rem; }
+
+  .subhead {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin: 1.5rem 0 0.5rem;
+  }
+  .subhead.problem { color: #fb7185; }
+  .subhead.solution { color: var(--accent); }
+
+  .case p { font-size: 0.94rem; color: var(--text-dim); }
+  .case p strong { color: var(--text); font-weight: 600; }
+  .case p + p { margin-top: 0.75rem; }
+
+  code, .inline-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85em;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    padding: 0.05rem 0.4rem;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+
+  .tradeoff {
+    margin-top: 1.1rem;
+    padding: 0.9rem 1.1rem;
+    border-left: 2px solid var(--accent2);
+    background: rgba(167,139,250,0.05);
+    border-radius: 0 8px 8px 0;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+  }
+  .tradeoff strong { color: var(--accent2); }
+
+  footer {
+    text-align: center;
+    padding: 3rem 0 2.5rem;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+    border-top: 1px solid var(--border);
+    margin-top: 1rem;
+  }
+  footer a { color: var(--accent); }
+
+  @media (max-width: 640px) {
+    .hero { padding: 3rem 0 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <nav class="wrap">
+    <a href="index.html#top" class="logo">NKRVVI<span>.</span></a>
+    <a href="index.html#personal" class="back-link">← Back to portfolio</a>
+  </nav>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <span class="eyebrow">Case Study · Personal Project</span>
+    <h1>Combat System</h1>
+    <p class="tagline">A C++-only sandbox for third-person melee — hit reactions, enemy AI, and group aggro, built to experiment.</p>
+
+    <div class="meta-row">
+      <span class="meta-tag">Unreal Engine 5</span>
+      <span class="meta-tag">C++ only</span>
+      <span class="meta-tag">Motion Warping</span>
+      <span class="meta-tag">Pawn Sensing</span>
+      <span class="meta-tag">Solo</span>
+    </div>
+
+    <div class="intro">
+      This one is honestly a testbed — an unfinished experiment in melee combat
+      mechanics written entirely in C++, no Blueprint logic. The point wasn't to ship a
+      game; it was to build the systems a souls-like needs and see where they strain.
+      Below are <strong>the problems that actually took thought</strong>: sharing combat
+      code between a player and an AI, an enemy state machine that doesn't stutter at
+      range boundaries, a squad that alarms together, and attacks that don't whiff.
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <div class="case">
+    <span class="case-num">01 / Shared Combat Base</span>
+    <h2>The player and the enemy are the same fighter underneath</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      A player character and an AI enemy in a melee game do almost the same things —
+      equip a weapon, swing it, take a hit, react, die — but they're driven completely
+      differently, one by input and one by a controller. Writing the combat twice means
+      every timing change or new weapon interaction has to land in both places, and they
+      drift.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      An abstract <code>ABaseCharacter</code> that implements a <code>IHitInterface</code>
+      holds everything shared: weapon pickup and socket attachment, weapon-box collision
+      toggled by anim notifies during a swing, an <code>Attributes</code> component that
+      all damage routes through, and montage playback for attacks, hit reactions and
+      death. <code>AControlledCharacter</code> (player) and <code>AEnemy</code> derive
+      from it and only add what's genuinely different — the player reads input, the enemy
+      runs a state machine. Weapon behaviour is data-driven off an <code>EWeaponType</code>
+      enum that indexes into montage arrays, attach sockets, and hit-sound arrays, so a
+      new weapon class is data, not code.
+    </p>
+
+    <div class="tradeoff">
+      <strong>Trade-off:</strong> a fat base class collects responsibilities over time.
+      For a sandbox at this scale that was fine — but a component-based split (a
+      "combatant" component attachable to any actor) would scale better if this grew,
+      and it's how I'd start today.
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="case">
+    <span class="case-num">02 / Directional Reactions</span>
+    <h2>A hit from behind shouldn't play the same as a hit to the face</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      Hit reactions and deaths that always play the same animation break the read of a
+      fight — the player can't tell which of two enemies landed the blow, and a
+      back-stab looks identical to a parry-trade. The reaction has to know where the hit
+      came from.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      On every hit, compute the angle between the character's forward vector and the
+      direction to the impact point — dot product for the magnitude, the sign of the
+      cross product's Z for which side — then bucket it into front / back / left / right
+      and play the matching montage section. Death montages use the same angle but pick
+      randomly among several directional variants so repeated kills from the same side
+      still look different.
+    </p>
+  </div>
+
+  <!-- 3 -->
+  <div class="case">
+    <span class="case-num">03 / Enemy State Machine</span>
+    <h2>An explicit C++ state machine that doesn't stutter at the edges</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      The enemy cycles through patrolling, chasing, closing to attack range, attacking,
+      and recovering. The naive version — "if within attack radius, attack; else chase"
+      — thrashes: a target hovering right on the attack radius makes the enemy flip
+      between chase and attack every frame, and interruptions (getting hit mid-swing)
+      leave it stuck in a state that no longer makes sense.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      An ordered <code>EEnemyState</code> enum (Patrolling → Alarm → Chasing → Engaged →
+      Attacking → Dead) with a single re-evaluation point. Perception comes from a
+      <code>PawnSensingComponent</code> (sight cone plus hearing). Patrol dwell time and
+      attack cadence are randomized timers, not fixed. The key fix for the thrash is
+      <strong>hysteresis</strong>: the radius to <em>enter</em> attack range is smaller
+      than the radius to <em>leave</em> it, so once engaged the enemy commits until the
+      target genuinely backs off. Anim-notify callbacks at the end of the attack, hit
+      reaction, and alarm animations are what re-run the decision — the state can't
+      advance until the current animation says it's allowed to.
+    </p>
+
+    <div class="tradeoff">
+      <strong>Trade-off:</strong> a hand-written state machine in C++ is more rigid than
+      a Behavior Tree a designer could retune. I chose it deliberately here — the whole
+      project is a C++ exercise — but for anything team-facing this logic belongs in a
+      BT or State Tree.
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="case">
+    <span class="case-num">04 / Group Aggro</span>
+    <h2>One guard spots you, the whole patrol turns</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      Enemies that each independently notice the player produce a trickle of one-at-a-time
+      engagements — the player mows down a line of guards who never react to their
+      neighbour dying three metres away. A group needs to alert as a group.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      Enemies register with a shared <code>AEnemyCommander</code> actor. When one sees
+      the player, it freezes and plays an alarm animation; an anim notify at the end of
+      that animation tells the commander, which pushes the player as the combat target
+      to every enemy in its list — the whole group drops into chasing at once. An
+      <code>IsAlreadyInformed()</code> guard means only the first sighting triggers the
+      alarm; after that, newly-spotting enemies just engage directly without replaying
+      the whole ceremony.
+    </p>
+
+    <div class="tradeoff">
+      <strong>Trade-off:</strong> the commander is a hand-placed actor with an
+      explicit enemy list rather than a dynamic proximity broadcast. Simpler to reason
+      about and debug, but it means group membership is authored, not emergent — fine
+      for set-piece encounters, limiting for an open patrol sim.
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="case">
+    <span class="case-num">05 / Attacks That Land</span>
+    <h2>Motion warping to kill the whiff</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      Root-motion attack animations play at a fixed distance. In a real fight the target
+      is never exactly there — they're a little too far and the swing sails through air,
+      or a little too close and the animation shoves them through the character. Both
+      feel terrible.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      Every tick, if a combat target is within attack range, the character updates two
+      Motion Warping targets: a translation target offset back from the enemy by a set
+      distance so the attacker ends the lunge just short of contact, and a rotation
+      target so the swing actually faces them. When the target leaves range, both warp
+      targets are removed so ordinary locomotion isn't affected. The animation does the
+      rest — the warp just corrects the last bit of spacing.
+    </p>
+  </div>
+
+  <!-- 6 -->
+  <div class="case">
+    <span class="case-num">06 / Where It Would Go Next</span>
+    <h2>The experiment's open threads</h2>
+
+    <p class="subhead problem">What's missing</p>
+    <p>
+      It's explicitly unfinished. The obvious next systems are the ones a fuller combat
+      loop needs: archery, stealth / backstab damage, a weapon inventory with swapping,
+      weapons degrading with use, hand-to-hand, and throwable weapons.
+    </p>
+
+    <p class="subhead solution">The direction</p>
+    <p>
+      Most of these want the base class broken into components first — a combatant
+      component, a weapon-handler component — so archery and hand-to-hand aren't
+      <code>if</code> branches inside one <code>Attack()</code>. The group AI would move
+      to a proper coordinator that assigns roles (flankers, a pusher) instead of just
+      broadcasting a target. Those two refactors unblock most of the list.
+    </p>
+  </div>
+
+</main>
+
+<footer>
+  <a href="index.html#personal">← Back to NKRVVI's portfolio</a>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capsule Shooter — Systems Case Study</title>
+<meta name="description" content="A top-down wave shooter with procedurally generated arenas in Unreal — the problems faced building guaranteed-connected maps, an anti-camping spawn director, and delegate-decoupled game flow, and how each was solved.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c11;
+    --bg-alt: #10131b;
+    --card: #151924;
+    --border: #232838;
+    --text: #e7eaf2;
+    --text-dim: #8a91a6;
+    --accent: #5eead4;
+    --accent2: #a78bfa;
+    --radius: 14px;
+    --maxw: 860px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.65;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(94,234,212,0.07), transparent 40%),
+      radial-gradient(circle at 85% 10%, rgba(167,139,250,0.07), transparent 40%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, .logo { font-family: 'Space Grotesk', 'Segoe UI', sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 1.5rem; }
+
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10,12,17,0.85);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav.wrap { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; max-width: var(--maxw); }
+  .logo { font-weight: 700; font-size: 1.05rem; }
+  .logo span { color: var(--accent); }
+  .back-link {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    transition: color 0.15s;
+  }
+  .back-link:hover { color: var(--accent); }
+
+  .hero { padding: 4rem 0 2.5rem; }
+  .eyebrow {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent2);
+    background: rgba(167,139,250,0.08);
+    border: 1px solid rgba(167,139,250,0.25);
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    margin-bottom: 1.3rem;
+  }
+  .hero h1 {
+    font-size: clamp(1.9rem, 5vw, 2.8rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .hero .tagline { margin-top: 0.7rem; font-size: 1.05rem; color: var(--text-dim); }
+
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 0.6rem;
+    margin-top: 1.5rem;
+  }
+  .meta-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+  }
+
+  .intro {
+    margin-top: 2rem;
+    padding: 1.4rem 1.6rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-dim);
+    font-size: 0.96rem;
+  }
+  .intro strong { color: var(--text); font-weight: 600; }
+
+  /* ---------- Case study blocks ---------- */
+  .case { padding: 2.8rem 0; border-top: 1px solid var(--border); }
+  .case-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+  }
+  .case h2 { font-size: 1.5rem; margin-top: 0.4rem; }
+
+  .subhead {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin: 1.5rem 0 0.5rem;
+  }
+  .subhead.problem { color: #fb7185; }
+  .subhead.solution { color: var(--accent); }
+
+  .case p { font-size: 0.94rem; color: var(--text-dim); }
+  .case p strong { color: var(--text); font-weight: 600; }
+  .case p + p { margin-top: 0.75rem; }
+
+  code, .inline-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85em;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    padding: 0.05rem 0.4rem;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+
+  .tradeoff {
+    margin-top: 1.1rem;
+    padding: 0.9rem 1.1rem;
+    border-left: 2px solid var(--accent2);
+    background: rgba(167,139,250,0.05);
+    border-radius: 0 8px 8px 0;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+  }
+  .tradeoff strong { color: var(--accent2); }
+
+  footer {
+    text-align: center;
+    padding: 3rem 0 2.5rem;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+    border-top: 1px solid var(--border);
+    margin-top: 1rem;
+  }
+  footer a { color: var(--accent); }
+
+  @media (max-width: 640px) {
+    .hero { padding: 3rem 0 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <nav class="wrap">
+    <a href="index.html#top" class="logo">NKRVVI<span>.</span></a>
+    <a href="index.html#personal" class="back-link">← Back to portfolio</a>
+  </nav>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <span class="eyebrow">Case Study · Personal Project</span>
+    <h1>Capsule Shooter</h1>
+    <p class="tagline">A top-down wave shooter where every arena is procedurally generated — and always solvable.</p>
+
+    <div class="meta-row">
+      <span class="meta-tag">Unreal Engine 5</span>
+      <span class="meta-tag">C++</span>
+      <span class="meta-tag">Procedural Generation</span>
+      <span class="meta-tag">Behavior Trees</span>
+      <span class="meta-tag">Data Tables</span>
+      <span class="meta-tag">Solo</span>
+    </div>
+
+    <div class="intro">
+      Survive waves of capsule enemies in a top-down arena built fresh each level from a
+      grid of tiles. The interesting problems here weren't the shooting — they were
+      <strong>generating a map that's random but never traps the player</strong>, a
+      spawn director that punishes camping without feeling unfair, and keeping a
+      map generator, a spawn manager, a game mode and a HUD in sync without wiring them
+      into a knot.
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <div class="case">
+    <span class="case-num">01 / Map Generation</span>
+    <h2>Random obstacles that never wall the player in</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      Each level is an <em>N&nbsp;×&nbsp;N</em> grid of tiles, some fraction of which
+      become obstacles. Placing obstacles at random is easy; the catch is that a random
+      layout regularly seals off a pocket of the arena — or boxes the player's spawn in
+      entirely — and an unreachable region is where enemies spawn that the player can
+      never fight. The generator has to guarantee the whole floor stays connected.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      Shuffle every tile with a Fisher–Yates pass, then walk the shuffled list as
+      obstacle candidates. For each candidate: tentatively make it an obstacle, run a
+      recursive flood fill from the centre tile, and count how many tiles it can reach.
+      If that count equals <em>(total − obstacles placed so far)</em>, the map is still
+      fully connected and the obstacle stays; otherwise it's reverted and the tile goes
+      back in the free pool. The centre tile is never eligible — that's the player's
+      spawn. Obstacle colours are lerped across a per-level palette by grid position, so
+      each arena reads as one piece.
+    </p>
+
+    <div class="tradeoff">
+      <strong>Trade-off:</strong> a flood fill per accepted obstacle is
+      O(tiles) each, so generation is roughly O(tiles²) — completely fine at these grid
+      sizes, but it wouldn't scale to a large map. For that I'd switch to a union-find
+      structure and check connectivity incrementally instead of re-flooding.
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="case">
+    <span class="case-num">02 / Data-Driven Levels</span>
+    <h2>A level is a row in a table, not a subclass</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      Every wave differs in grid size, obstacle density, which gun the player gets, how
+      many enemies spawn, whether spawning is finite or endless, and how fast they
+      arrive. Encoding that per-level in code means a recompile for every balance tweak
+      and a new class per wave.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      Levels are <code>FLevelData</code> rows in a data table (tile count, obstacle
+      percent, gun class, enemies-per-wave, infinite-spawn flag, seconds between spawns),
+      with colour schemes in a parallel <code>FColourPalette</code> table. The game
+      instance reads the table once on <code>Init</code>, then owns the run state —
+      current level, carried-over health, score — across the full level reload that
+      happens between waves, advancing when a <code>WaveEnded</code> delegate fires.
+    </p>
+  </div>
+
+  <!-- 3 -->
+  <div class="case">
+    <span class="case-num">03 / Anti-Camping Spawn Director</span>
+    <h2>Standing still should stop being safe</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      In a wave shooter with ranged enemies, the dominant strategy is to find a corner
+      with one approach angle and hold it. If enemies always spawn at random tiles, a
+      camper is rewarded — the fight comes to them single-file.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      The map generator polls the player's position on a timer. If the player hasn't
+      moved more than one tile-length since the last check, it works out which tile
+      they're standing on and broadcasts it; the spawn manager forces the <em>next</em>
+      enemy to spawn on that tile instead of a random one. When the player is moving
+      normally, spawns fall back to a random unoccupied tile. Either way the target tile
+      pulses — a colour flash driven by chained short timers — for a visible telegraph
+      window before the enemy actually appears, so a forced spawn is a warning, not an
+      ambush.
+    </p>
+
+    <div class="tradeoff">
+      <strong>Trade-off:</strong> "moved less than one tile" is a blunt check — a player
+      strafing a tight circle reads as mobile. I kept it simple because the telegraph
+      flash makes a wrong call cheap; a smarter version would track a movement heatmap
+      over a few seconds.
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="case">
+    <span class="case-num">04 / Decoupled Game Flow</span>
+    <h2>Four managers that never hold hard references to each other</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      Map generation, enemy spawning, wave/score bookkeeping, and the HUD all have to
+      react to each other: a spawn increments a counter, the last kill of a wave ends
+      the level, the player dying stops spawning and shows a menu. If each system reaches
+      directly into the others, the dependency graph becomes circular and nothing can be
+      tested or changed in isolation.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      Each manager registers itself with the game mode in its own <code>BeginPlay</code>;
+      the game mode is the only thing that knows the full set. Everything after that is
+      multicast delegates — <code>PlayerDiedDelegate</code>, <code>SpawnedEnemyDelegate</code>,
+      <code>EnemyDiedDelegate</code>, <code>WaveEnded</code>, <code>SpawnOnPlayerDelegate</code>,
+      <code>StopEnemies</code> — wired together with lambdas in one place. The map
+      generator doesn't know the spawn manager exists; it just broadcasts "player is
+      camping this tile" and something downstream handles it.
+    </p>
+
+    <div class="tradeoff">
+      <strong>Trade-off:</strong> the wiring all lives in the game mode's
+      <code>StartLevel</code>, which becomes a long function of lambda subscriptions.
+      It's centralised and readable top-to-bottom, but it is the one place that knows
+      everything — the cost of keeping every other system ignorant of its neighbours.
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="case">
+    <span class="case-num">05 / Enemy Attack</span>
+    <h2>A lunge that doesn't need a navmesh</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      Capsule enemies close and strike. Running the attack itself through navmesh
+      pathfinding is overkill for a short lunge in an open arena, and it fights the
+      readable, arcade feel — you want a clean dash in and a dash back out.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      Behaviour runs on a Behavior Tree: a service continuously writes the enemy→player
+      distance to the blackboard for range decorators, an attack-cooldown decorator
+      gates re-entry, and the attack itself is a latent task that interpolates the enemy
+      toward a point just short of the player (offset by the player's capsule width),
+      applies damage on contact, then interpolates back to where it started before
+      finishing. An <code>IsAttacking</code> blackboard bool keeps other branches from
+      firing mid-lunge.
+    </p>
+  </div>
+
+  <!-- 6 -->
+  <div class="case">
+    <span class="case-num">06 / Endless Mode Ramp</span>
+    <h2>Making infinite waves actually escalate</h2>
+
+    <p class="subhead problem">The problem</p>
+    <p>
+      An infinite-spawn level with a fixed spawn interval plateaus — after the first
+      minute the difficulty never changes and the run just becomes a test of patience.
+    </p>
+
+    <p class="subhead solution">The decision</p>
+    <p>
+      The game mode counts spawns in endless mode, and every fixed number of spawns it
+      tells the spawn manager to shorten the interval. The pressure compounds on its own
+      the longer the player survives, and the score they're chasing is the reward for
+      riding the curve up.
+    </p>
+  </div>
+
+</main>
+
+<footer>
+  <a href="index.html#personal">← Back to NKRVVI's portfolio</a>
+</footer>
+
+</body>
+</html>
