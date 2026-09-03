@@ -11,14 +11,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0c11;
-    --bg-alt: #10131b;
-    --card: #151924;
-    --border: #232838;
-    --text: #e7eaf2;
-    --text-dim: #8a91a6;
-    --accent: #5eead4;
-    --accent2: #a78bfa;
+    --bg: #000000;
+    --bg-alt: #141414;
+    --card: #161616;
+    --border: #2a2a2a;
+    --text: #f2f2f2;
+    --text-dim: #9a9a9a;
+    --accent: #e11d2e;
+    --accent2: #ff5c6c;
     --radius: 14px;
     --maxw: 1080px;
   }
@@ -32,10 +32,6 @@
     color: var(--text);
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     line-height: 1.6;
-    background-image:
-      radial-gradient(circle at 15% 0%, rgba(94,234,212,0.07), transparent 40%),
-      radial-gradient(circle at 85% 10%, rgba(167,139,250,0.07), transparent 40%);
-    background-attachment: fixed;
   }
 
   h1, h2, h3, .logo { font-family: 'Space Grotesk', 'Segoe UI', sans-serif; }
@@ -49,7 +45,7 @@
     position: sticky;
     top: 0;
     z-index: 50;
-    background: rgba(10,12,17,0.85);
+    background: rgba(13,13,13,0.85);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border);
   }
@@ -98,8 +94,8 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.8rem;
     color: var(--accent);
-    background: rgba(94,234,212,0.08);
-    border: 1px solid rgba(94,234,212,0.25);
+    background: rgba(225,29,46,0.10);
+    border: 1px solid rgba(225,29,46,0.30);
     padding: 0.3rem 0.8rem;
     border-radius: 999px;
     margin-bottom: 1.5rem;
@@ -108,10 +104,7 @@
     font-size: clamp(2.2rem, 6vw, 3.6rem);
     font-weight: 700;
     letter-spacing: -0.01em;
-    background: linear-gradient(135deg, var(--text) 40%, var(--accent));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--text);
   }
   .hero .tagline {
     margin-top: 0.9rem;
@@ -198,7 +191,7 @@
   .tag-btn.active {
     background: var(--accent);
     border-color: var(--accent);
-    color: #0a0c11;
+    color: #ffffff;
     font-weight: 500;
   }
 
@@ -223,7 +216,7 @@
   }
   .project-card:hover {
     transform: translateY(-4px);
-    border-color: rgba(94,234,212,0.35);
+    border-color: rgba(225,29,46,0.45);
   }
   .project-card.hidden { display: none; }
 
@@ -237,7 +230,7 @@
     font-family: 'Space Grotesk', sans-serif;
     font-weight: 700;
     font-size: 1.8rem;
-    color: rgba(10,12,17,0.55);
+    color: rgba(255,255,255,0.7);
     letter-spacing: 0.05em;
     overflow: hidden;
   }
@@ -278,19 +271,25 @@
     border-radius: 999px;
   }
 
-  .card-links { display: flex; gap: 1.1rem; margin-top: 0.4rem; }
+  .card-links { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.4rem; }
   .card-links a {
     font-size: 0.82rem;
-    color: var(--accent);
-    border-bottom: 1px solid transparent;
+    color: var(--text);
+    border: 1px solid var(--text);
+    border-radius: 999px;
+    padding: 0.35rem 0.85rem;
+    transition: background-color 0.15s, color 0.15s, border-color 0.15s;
   }
-  .card-links a:hover { border-color: var(--accent); }
+  .card-links a:hover {
+    background: var(--text);
+    color: #0d0d0d;
+  }
 
   .badge-jam {
     display: inline-block;
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.68rem;
-    color: #0a0c11;
+    color: #0d0d0d;
     background: var(--accent2);
     padding: 0.15rem 0.5rem;
     border-radius: 4px;
@@ -384,7 +383,7 @@
 
       <!-- Working title taken from the project folder name — rename the <h3> if the public title differs -->
       <article class="project-card" data-tags="Unreal Engine,C++,RTS,Campaign AI,Systems Design">
-        <div class="card-thumb" style="background:linear-gradient(135deg,#5eead4,#3b82f6)">PG</div>
+        <div class="card-thumb" style="background:linear-gradient(135deg,#e11d2e,#5a0a12)">PG</div>
         <div class="card-body">
           <div class="card-header">
             <h3>Project Greenleaf</h3>
@@ -454,7 +453,7 @@
     <div class="project-grid" id="personal-grid">
 
       <article class="project-card" data-tags="Unreal Engine,C++,Melee Combat,Boss AI,State Tree,Solo Dev">
-        <div class="card-thumb" style="background:#1b2a3a">
+        <div class="card-thumb" style="background:#161616">
           <img src="assets/shimuraduel-thumb.png" alt="Shimura Duel — two fighters clashing katanas mid-duel" style="object-fit:cover">
         </div>
         <div class="card-body">
@@ -485,7 +484,7 @@
       </article>
 
       <article class="project-card" data-tags="Unreal Engine,C++,Procedural Generation,Behavior Trees,Wave Shooter,Solo Dev">
-        <div class="card-thumb" style="background:#5b7291">
+        <div class="card-thumb" style="background:#161616">
           <img src="assets/capsuleshooter-thumb.png" alt="Capsule Shooter — a procedurally generated arena, coral-to-teal palette, player capsule firing at enemies" style="object-fit:cover">
         </div>
         <div class="card-body">
@@ -516,7 +515,7 @@
       </article>
 
       <article class="project-card" data-tags="Unreal Engine,C++,Melee Combat,Enemy AI,Motion Warping,Solo Dev">
-        <div class="card-thumb" style="background:linear-gradient(135deg,#a78bfa,#f43f5e)">CB</div>
+        <div class="card-thumb" style="background:linear-gradient(135deg,#ff5c6c,#e11d2e)">CB</div>
         <div class="card-body">
           <div class="card-header">
             <h3>Combat System</h3>
