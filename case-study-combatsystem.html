@@ -103,6 +103,22 @@
     border-radius: 999px;
   }
 
+  .project-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.3rem;
+    margin-top: 1.3rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+  }
+  .project-links a {
+    color: var(--accent);
+    border-bottom: 1px solid transparent;
+    padding-bottom: 2px;
+    transition: border-color 0.15s;
+  }
+  .project-links a:hover { border-color: var(--accent); }
+
   .intro {
     margin-top: 2rem;
     padding: 1.4rem 1.6rem;
@@ -225,6 +241,11 @@
       <span class="meta-tag">Motion Warping</span>
       <span class="meta-tag">Pawn Sensing</span>
       <span class="meta-tag">Solo</span>
+    </div>
+
+    <div class="project-links">
+      <a href="https://github.com/NKRVVI/CombatSystem" target="_blank" rel="noopener">Source ↗</a>
+      <a href="https://nkrvvi.itch.io/combat-system" target="_blank" rel="noopener">Play on itch.io ↗</a>
     </div>
 
     <div class="intro">

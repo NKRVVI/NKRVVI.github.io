@@ -238,6 +238,11 @@
     border-color: rgba(94,234,212,0.35);
   }
   .project-card.hidden { display: none; }
+  .project-card[data-href] { cursor: pointer; }
+  .project-card[data-href]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
 
   @keyframes reveal { to { opacity: 1; transform: translateY(0); } }
 
@@ -289,14 +294,6 @@
     padding: 0.2rem 0.55rem;
     border-radius: 999px;
   }
-
-  .card-links { display: flex; gap: 1.1rem; margin-top: 0.4rem; }
-  .card-links a {
-    font-size: 0.82rem;
-    color: var(--accent);
-    border-bottom: 1px solid transparent;
-  }
-  .card-links a:hover { border-color: var(--accent); }
 
   .badge-jam {
     display: inline-block;
@@ -397,7 +394,7 @@
     <div class="project-grid" id="professional-grid">
 
       <!-- Working title taken from the project folder name — rename the <h3> if the public title differs -->
-      <article class="project-card" data-tags="Unreal Engine,C++,RTS,Campaign AI,Systems Design">
+      <article class="project-card" data-tags="Unreal Engine,C++,RTS,Campaign AI,Systems Design" data-href="case-study-greenleaf.html" tabindex="0" role="link">
         <div class="card-thumb" style="background:linear-gradient(135deg,#5eead4,#3b82f6)">PG</div>
         <div class="card-body">
           <div class="card-header">
@@ -419,14 +416,11 @@
             <span class="tag">Campaign AI</span>
             <span class="tag">Systems Design</span>
           </div>
-          <div class="card-links">
-            <a href="case-study-greenleaf.html">Systems case study</a>
-          </div>
         </div>
       </article>
 
       <!-- Working title taken from the project's module name — rename the <h3> if the public title differs -->
-      <article class="project-card" data-tags="Unreal Engine,C++,AI/EQS,Tactical,Solo Dev">
+      <article class="project-card" data-tags="Unreal Engine,C++,AI/EQS,Tactical,Solo Dev" data-href="case-study-isf.html" tabindex="0" role="link">
         <div class="card-thumb" style="background:#0d0d0f">
           <img src="assets/isf-thumb.png" alt="Indian Special Forces — S★F Tactical Ops game icon">
         </div>
@@ -449,9 +443,6 @@
             <span class="tag">Tactical</span>
             <span class="tag">Solo Dev</span>
           </div>
-          <div class="card-links">
-            <a href="case-study-isf.html">Systems case study</a>
-          </div>
         </div>
       </article>
 
@@ -467,7 +458,7 @@
 
     <div class="project-grid" id="personal-grid">
 
-      <article class="project-card" data-tags="Unreal Engine,C++,Melee Combat,Boss AI,State Tree,Solo Dev">
+      <article class="project-card" data-tags="Unreal Engine,C++,Melee Combat,Boss AI,State Tree,Solo Dev" data-href="case-study-shimuraduel.html" tabindex="0" role="link">
         <div class="card-thumb" style="background:#1b2a3a">
           <img src="assets/shimuraduel-thumb.png" alt="Shimura Duel — two fighters clashing katanas mid-duel" style="object-fit:cover">
         </div>
@@ -491,15 +482,10 @@
             <span class="tag">State Tree</span>
             <span class="tag">Solo Dev</span>
           </div>
-          <div class="card-links">
-            <a href="case-study-shimuraduel.html">Systems case study</a>
-            <a href="https://github.com/NKRVVI/ShimuraDuel" target="_blank" rel="noopener">Source</a>
-            <a href="https://nkrvvi.itch.io/ghost-of-tsushima-duel" target="_blank" rel="noopener">Play on itch.io</a>
-          </div>
         </div>
       </article>
 
-      <article class="project-card" data-tags="Unreal Engine,C++,Procedural Generation,Behavior Trees,Wave Shooter,Solo Dev">
+      <article class="project-card" data-tags="Unreal Engine,C++,Procedural Generation,Behavior Trees,Wave Shooter,Solo Dev" data-href="case-study-capsuleshooter.html" tabindex="0" role="link">
         <div class="card-thumb" style="background:#5b7291">
           <img src="assets/capsuleshooter-thumb.png" alt="Capsule Shooter — a procedurally generated arena, coral-to-teal palette, player capsule firing at enemies" style="object-fit:cover">
         </div>
@@ -523,15 +509,10 @@
             <span class="tag">Wave Shooter</span>
             <span class="tag">Solo Dev</span>
           </div>
-          <div class="card-links">
-            <a href="case-study-capsuleshooter.html">Systems case study</a>
-            <a href="https://github.com/NKRVVI/CapsuleShooter" target="_blank" rel="noopener">Source</a>
-            <a href="https://nkrvvi.itch.io/capsule-shooter" target="_blank" rel="noopener">Play on itch.io</a>
-          </div>
         </div>
       </article>
 
-      <article class="project-card" data-tags="Unreal Engine,C++,Melee Combat,Enemy AI,Motion Warping,Solo Dev">
+      <article class="project-card" data-tags="Unreal Engine,C++,Melee Combat,Enemy AI,Motion Warping,Solo Dev" data-href="case-study-combatsystem.html" tabindex="0" role="link">
         <div class="card-thumb" style="background:#403a3d">
           <img src="assets/combatsystem-thumb.png" alt="Combat System — player character mid-swing with a warhammer overhead" style="object-fit:cover">
         </div>
@@ -554,11 +535,6 @@
             <span class="tag">Enemy AI</span>
             <span class="tag">Motion Warping</span>
             <span class="tag">Solo Dev</span>
-          </div>
-          <div class="card-links">
-            <a href="case-study-combatsystem.html">Systems case study</a>
-            <a href="https://github.com/NKRVVI/CombatSystem" target="_blank" rel="noopener">Source</a>
-            <a href="https://nkrvvi.itch.io/combat-system" target="_blank" rel="noopener">Play on itch.io</a>
           </div>
         </div>
       </article>
@@ -586,6 +562,20 @@
 
 <script>
   document.getElementById('year').textContent = new Date().getFullYear();
+
+  document.querySelectorAll('.project-card[data-href]').forEach(function (card) {
+    card.addEventListener('click', function (e) {
+      if (e.target.closest('a')) return; // let inner links (Source, itch.io, etc.) behave normally
+      window.location.href = card.dataset.href;
+    });
+    card.addEventListener('keydown', function (e) {
+      if (e.target !== card) return; // don't hijack Enter on inner links
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        window.location.href = card.dataset.href;
+      }
+    });
+  });
 </script>
 
 </body>
